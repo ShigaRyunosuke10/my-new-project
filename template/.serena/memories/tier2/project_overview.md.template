@@ -1,0 +1,266 @@
+# {{PROJECT_DISPLAY_NAME}} - プロジェクト概要
+
+**作成日**: {{CURRENT_DATE}}
+**最終更新**: {{CURRENT_DATE}}
+
+---
+
+## 📋 基本情報
+
+| 項目 | 内容 |
+|------|------|
+| **プロジェクト名** | {{PROJECT_NAME}} |
+| **表示名** | {{PROJECT_DISPLAY_NAME}} |
+| **リポジトリ** | https://github.com/{{GITHUB_OWNER}}/{{PROJECT_NAME}} |
+| **開発開始日** | {{CURRENT_DATE}} |
+| **プロジェクト規模** | Tier 2（中規模、チーム開発・1-3ヶ月） |
+
+---
+
+## 🎯 プロジェクトの目的・背景
+
+{{PROJECT_DESCRIPTION}}
+
+### 解決したい課題
+- （要件定義時に記入）
+
+### ターゲットユーザー
+- （要件定義時に記入）
+
+### 期待される効果
+- （要件定義時に記入）
+
+---
+
+## 🛠️ 技術スタック
+
+### バックエンド
+- **フレームワーク**: {{BACKEND_TECH}}
+- **データベース**: {{DATABASE_TYPE}}
+- **認証**: JWT + bcrypt{{OAUTH_INFO}}
+- **ポート**: {{PORT_BACKEND}}
+
+### フロントエンド
+- **フレームワーク**: {{FRONTEND_TECH}}
+- **スタイリング**: Tailwind CSS
+- **UIコンポーネント**: shadcn/ui (Next.js) / Vuetify (Vue.js) / Material-UI (React)
+- **ポート**: {{PORT_FRONTEND}}
+
+### インフラ・デプロイ
+- **コンテナ**: Docker, Docker Compose
+- **フロントエンドホスティング**: {{FRONTEND_HOSTING}}
+- **バックエンドホスティング**: {{BACKEND_HOSTING}}
+
+### 開発ツール
+- **バージョン管理**: Git, GitHub
+- **CI/CD**: GitHub Actions（予定）
+- **コードフォーマット**: Black (Python) / Prettier + ESLint (JavaScript/TypeScript)
+- **テスト**: pytest (Python) / Jest (JavaScript/TypeScript)
+
+---
+
+## 🎨 システム構成
+
+```
+┌─────────────┐
+│   ユーザー   │
+└──────┬──────┘
+       │
+       │ http://localhost:{{PORT_FRONTEND}}
+       ↓
+┌─────────────────────┐
+│   フロントエンド     │
+│   ({{FRONTEND_TECH}})  │
+│   Port: {{PORT_FRONTEND}}      │
+└──────┬──────────────┘
+       │
+       │ API: http://localhost:{{PORT_BACKEND}}
+       ↓
+┌─────────────────────┐
+│   バックエンド       │
+│   ({{BACKEND_TECH}})  │
+│   Port: {{PORT_BACKEND}}        │
+└──────┬──────────────┘
+       │
+       │ DATABASE_URL
+       ↓
+┌─────────────────────┐
+│   データベース       │
+│   ({{DATABASE_TYPE}})  │
+└─────────────────────┘
+```
+
+---
+
+## 📂 ディレクトリ構造
+
+```
+{{PROJECT_NAME}}/
+├── backend/              # バックエンド（{{BACKEND_TECH}}）
+│   ├── app/             # アプリケーションコード
+│   ├── tests/           # テストコード
+│   ├── Dockerfile
+│   └── requirements.txt / package.json
+│
+├── frontend/            # フロントエンド（{{FRONTEND_TECH}}）
+│   ├── src/            # ソースコード
+│   ├── public/         # 静的ファイル
+│   ├── Dockerfile
+│   └── package.json
+│
+├── docs/               # プロジェクトドキュメント（人間用・簡潔版）
+│   ├── README.md
+│   ├── SETUP.md
+│   ├── API.md
+│   └── DATABASE.md
+│
+├── ai-rules/           # AI向けルール・仕様（詳細版）
+│   ├── common/         # 共通ルール
+│   └── {{PROJECT_NAME}}/  # プロジェクト固有ルール
+│
+├── .serena/            # Serenaメモリ（AI用の詳細仕様）
+│   └── memories/
+│       ├── project_overview.md  # このファイル
+│       ├── current_issues_and_priorities.md
+│       ├── implementation_status.md
+│       ├── database_specifications.md
+│       ├── api_specifications.md
+│       └── system_architecture.md
+│
+├── .claude/            # Claude Code設定
+│   ├── agents/         # サブエージェント設定
+│   └── settings.json
+│
+├── docker-compose.yml  # Docker設定
+├── CLAUDE.md          # Claude Code メイン設定
+└── README.md
+```
+
+---
+
+## 🚀 主要機能（予定）
+
+### Phase 1: MVP（Minimum Viable Product）
+- （要件定義時に記入）
+
+### Phase 2: 機能拡張
+- （要件定義時に記入）
+
+### Phase 3: 最適化・改善
+- （要件定義時に記入）
+
+---
+
+## 👥 開発体制
+
+### チーム構成
+- **開発者**: 1-2名（{{GITHUB_OWNER}} 他）
+- **AI支援**: Claude Code + サブエージェント
+  - code-reviewer: PR作成後のコードレビュー
+  - e2e-tester: コミット前の動作確認
+  - docs-updater: マージ後のドキュメント更新
+
+### 開発フロー
+```
+要件定義
+  ↓
+設計（ER図、API設計、画面設計）
+  ↓
+実装（ブランチ作成 → コーディング → E2Eテスト）
+  ↓
+PR作成 → code-reviewer レビュー
+  ↓
+マージ → docs-updater ドキュメント更新
+  ↓
+デプロイ
+```
+
+---
+
+## 📅 開発スケジュール
+
+### マイルストーン
+- **Week 1-2**: 要件定義・設計
+- **Week 3-6**: Phase 1 実装
+- **Week 7-10**: Phase 2 実装
+- **Week 11-12**: Phase 3 実装・テスト
+- **Week 13-14**: デプロイ・リリース
+
+（実際のスケジュールは要件定義後に更新）
+
+---
+
+## 🔐 セキュリティ方針
+
+### 認証・認可
+- JWT + bcrypt によるパスワードハッシュ化
+{{#OAUTH_ENABLED}}- OAuth 2.0（Google, GitHub）連携{{/OAUTH_ENABLED}}
+- セッション管理（Redis検討）
+- ロールベースアクセス制御（RBAC）
+
+### データ保護
+- 環境変数による機密情報管理（.env）
+- HTTPS通信（本番環境）
+- CORS設定
+- レート制限（DDoS対策）
+- 個人情報の暗号化
+
+### コードセキュリティ
+- 入力値検証（全エンドポイント）
+- SQL Injection対策（ORMパラメータ化）
+- XSS対策（エスケープ処理）
+- CSRF対策（トークン検証）
+- 依存関係の脆弱性スキャン
+
+---
+
+## 📊 パフォーマンス目標
+
+### レスポンスタイム
+- **API**: 平均 < 200ms
+- **ページ読み込み**: 初回 < 3秒、以降 < 1秒
+- **データベースクエリ**: < 100ms
+
+### データベース
+- **クエリ**: N+1問題の回避
+- **インデックス**: 適切な設計
+- **接続プール**: 効率的な管理
+- **キャッシング**: Redis活用
+
+### スケーラビリティ
+- **同時接続**: 1000ユーザー対応
+- **データ量**: 100万レコード対応
+- **負荷分散**: ロードバランサー検討
+
+---
+
+## 📖 関連ドキュメント
+
+### AI用詳細仕様（.serena/memories/）
+- **current_issues_and_priorities.md**: 現在の課題・優先度（最重要）
+- **implementation_status.md**: 実装状況・進捗
+- **database_specifications.md**: データベース詳細仕様
+- **api_specifications.md**: API詳細仕様
+- **system_architecture.md**: システムアーキテクチャ詳細
+
+### 人間用簡潔ドキュメント（docs/）
+- **README.md**: プロジェクト概要
+- **SETUP.md**: 環境構築手順
+- **API.md**: API仕様（簡潔版）
+- **DATABASE.md**: データベース設計（簡潔版）
+
+### AI向けルール（ai-rules/）
+- **ai-rules/common/**: 共通開発ルール
+- **ai-rules/{{PROJECT_NAME}}/**: プロジェクト固有ルール
+
+---
+
+## 📝 更新履歴
+
+| 日付 | 更新内容 | 更新者 |
+|------|---------|--------|
+| {{CURRENT_DATE}} | 初版作成 | {{GITHUB_OWNER}} |
+
+---
+
+**最終更新日**: {{CURRENT_DATE}}

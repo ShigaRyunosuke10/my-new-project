@@ -1,0 +1,191 @@
+# {{PROJECT_DISPLAY_NAME}}
+
+{{PROJECT_DESCRIPTION}}
+
+## 📋 プロジェクト概要
+
+このプロジェクトは{{BACKEND_TECH}} + {{FRONTEND_TECH}}で構築されたWebアプリケーションです。
+
+## 🛠️ 技術スタック
+
+### バックエンド
+- **フレームワーク**: {{BACKEND_TECH}}
+- **データベース**: {{DATABASE_TYPE}}
+- **認証**: JWT{{OAUTH_INFO}}
+
+### フロントエンド
+- **フレームワーク**: {{FRONTEND_TECH}}
+- **スタイリング**: Tailwind CSS
+- **UIコンポーネント**: shadcn/ui (Next.js) / Vuetify (Vue.js)
+
+### インフラ
+- **コンテナ**: Docker, Docker Compose
+- **フロントエンドホスティング**: {{FRONTEND_HOSTING}}
+- **バックエンドホスティング**: {{BACKEND_HOSTING}}
+
+## 🚀 環境構築
+
+詳細は [docs/SETUP.md](./docs/SETUP.md) を参照してください。
+
+### クイックスタート
+
+1. **リポジトリのクローン**
+```bash
+git clone https://github.com/{{GITHUB_OWNER}}/{{PROJECT_NAME}}.git
+cd {{PROJECT_NAME}}
+```
+
+2. **環境変数の設定**
+```bash
+# バックエンド
+cp backend/.env.example backend/.env
+# 必要な値を設定してください
+
+# フロントエンド
+cp frontend/.env.example frontend/.env
+# 必要な値を設定してください
+```
+
+3. **Dockerで起動**
+```bash
+docker-compose up -d
+```
+
+4. **アクセス**
+- フロントエンド: http://localhost:3000
+- バックエンドAPI: http://localhost:8000
+- API ドキュメント: http://localhost:8000/docs
+
+## 📁 ディレクトリ構造
+
+```
+{{PROJECT_NAME}}/
+├── backend/              # バックエンド（{{BACKEND_TECH}}）
+│   ├── app/             # アプリケーションコード
+│   ├── tests/           # テストコード
+│   └── Dockerfile
+├── frontend/            # フロントエンド（{{FRONTEND_TECH}}）
+│   ├── src/            # ソースコード
+│   ├── public/         # 静的ファイル
+│   └── Dockerfile
+├── docs/               # プロジェクトドキュメント（人間用・簡潔版）
+│   ├── README.md       # プロジェクト概要
+│   ├── SETUP.md        # 環境構築手順
+│   ├── API.md          # API仕様（簡潔版）
+│   └── DATABASE.md     # データベース設計（簡潔版）
+├── ai-rules/           # AI向けルール・仕様（詳細版）
+│   ├── common/         # 共通ルール
+│   └── {{PROJECT_NAME}}/  # プロジェクト固有ルール
+├── .serena/            # Serenaメモリ（AI用の詳細仕様）
+│   └── memories/
+├── .claude/            # Claude Code設定
+│   ├── agents/         # サブエージェント設定
+│   └── settings.json   # 設定ファイル
+├── reference/          # リファレンス資料（既存資料置き場）
+├── docker-compose.yml  # Docker設定
+├── CLAUDE.md          # Claude Code メイン設定
+└── README.md          # このファイル
+```
+
+## 📚 ドキュメント
+
+### 人間向けドキュメント（docs/）
+- [環境構築手順](./docs/SETUP.md)
+- [API仕様](./docs/API.md)
+- [データベース設計](./docs/DATABASE.md)
+
+### AI向けドキュメント（ai-rules/）
+- [ワークフロー](./ai-rules/{{PROJECT_NAME}}/WORKFLOW.md)
+- [テストガイド](./ai-rules/{{PROJECT_NAME}}/TESTING.md)
+- [ドキュメント管理](./ai-rules/{{PROJECT_NAME}}/DOCUMENTATION_GUIDE.md)
+
+### Serenaメモリ（.serena/memories/）
+- `current_issues_and_priorities.md` - 現在の課題・優先度
+- `project_overview.md` - プロジェクト概要
+- `database_specifications.md` - DB詳細仕様
+- `api_specifications.md` - API詳細仕様
+- `implementation_status.md` - 実装状況
+
+## 🧪 テスト
+
+### バックエンド
+```bash
+cd backend
+pytest
+```
+
+### フロントエンド
+```bash
+cd frontend
+npm test
+```
+
+### E2Eテスト
+```bash
+npx playwright test
+```
+
+## 🔧 開発ワークフロー
+
+1. **ブランチ作成**: `feat-*`, `fix-*`, `docs-*`
+2. **実装**: コードを書く
+3. **テスト**: E2Eテストを実行（e2e-tester サブエージェント）
+4. **コミット**: コミットメッセージ規約に従う
+5. **PR作成**: プルリクエストを作成
+6. **レビュー**: code-reviewer サブエージェントでレビュー
+7. **マージ**: mainにマージ
+8. **ドキュメント更新**: docs-updater サブエージェントで自動更新
+
+詳細は [ai-rules/{{PROJECT_NAME}}/WORKFLOW.md](./ai-rules/{{PROJECT_NAME}}/WORKFLOW.md) を参照。
+
+## 🤖 サブエージェント
+
+このプロジェクトでは以下のAIサブエージェントを活用：
+
+- **code-reviewer**: コードレビュー専門家（PR作成後）
+- **e2e-tester**: E2Eテスト専門家（コミット前）
+- **docs-updater**: ドキュメント更新専門家（マージ後）
+
+## 🔐 セキュリティ
+
+- **環境変数**: `.env`ファイルで管理（Gitにコミットしない）
+- **認証**: JWT{{OAUTH_INFO}}
+- **API**: CORS設定、レート制限あり
+
+## 📝 コミット規約
+
+```
+feat: 新機能追加
+fix: バグ修正
+docs: ドキュメント更新
+refactor: リファクタリング
+test: テスト追加・修正
+chore: ビルド・設定変更
+```
+
+詳細は [ai-rules/common/COMMIT_GUIDELINES.md](./ai-rules/common/COMMIT_GUIDELINES.md) を参照。
+
+## 🚢 デプロイ
+
+### フロントエンド（{{FRONTEND_HOSTING}}）
+
+デプロイ設定は `deployment/{{FRONTEND_HOSTING}}/` を参照してください。
+
+### バックエンド（{{BACKEND_HOSTING}}）
+
+デプロイ設定は `deployment/{{BACKEND_HOSTING}}/` を参照してください。
+
+詳細は [docs/SETUP.md](./docs/SETUP.md) の「デプロイ」セクションを参照。
+
+## 📞 サポート
+
+- **Issue**: https://github.com/{{GITHUB_OWNER}}/{{PROJECT_NAME}}/issues
+- **Pull Request**: https://github.com/{{GITHUB_OWNER}}/{{PROJECT_NAME}}/pulls
+
+## 📄 ライセンス
+
+MIT License
+
+---
+
+**作成日**: {{CURRENT_DATE}}

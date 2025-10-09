@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  # ========================================
+  # データベース
+  # ========================================
+  db:
+    image: {{DATABASE_IMAGE}}
+    container_name: {{PROJECT_NAME}}-db
+    restart: always
+    environment:
+      {{DATABASE_ENV_VARS}}
+    ports:
+      - "{{DATABASE_PORT}}:{{DATABASE_INTERNAL_PORT}}"
+    volumes:
+      - {{DATABASE_VOLUME_NAME}}:/var/lib/{{DATABASE_VOLUME_PATH}}
+    networks:
+      - {{PROJECT_NAME}}-network
+
+  # ========================================
+  # バックエンド
+  # ========================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: {{PROJECT_NAME}}-backend
+    restart: always
+    ports:
+      - "{{PORT_BACKEND}}:{{PORT_BACKEND}}"
+    environment:
+      - DATABASE_URL={{DATABASE_URL}}
+      - JWT_SECRET=${JWT_SECRET}{{OAUTH_ENV_VARS}}
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - db
+    networks:
+      - {{PROJECT_NAME}}-network
+    command: {{BACKEND_COMMAND}}
+
+  # ========================================
+  # フロントエンド
+  # ========================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: {{PROJECT_NAME}}-frontend
+    restart: always
+    ports:
+      - "{{PORT_FRONTEND}}:{{PORT_FRONTEND}}"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:{{PORT_BACKEND}}{{OAUTH_FRONTEND_ENV}}
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - {{PROJECT_NAME}}-network
+    command: {{FRONTEND_COMMAND}}
+
+networks:
+  {{PROJECT_NAME}}-network:
+    driver: bridge
+
+volumes:
+  {{DATABASE_VOLUME_NAME}}:

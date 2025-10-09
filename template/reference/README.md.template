@@ -1,0 +1,194 @@
+# リファレンス資料フォルダ
+
+このフォルダは、プロジェクト開発に必要な**既存資料**を格納するためのものです。
+
+---
+
+## 📁 このフォルダの使い方
+
+### 格納すべき資料
+
+以下のような既存資料をここに配置してください：
+
+1. **打合せ議事録**
+   - 議事録PDF、Word文書
+   - 音声録音の文字起こし
+
+2. **既存仕様書**
+   - Excel、Googleスプレッドシートのエクスポート
+   - 既存システムの仕様書
+
+3. **画面イメージ・デザイン**
+   - ワイヤーフレーム（Figma、Sketch等のエクスポート）
+   - 画面スクリーンショット
+   - デザインモックアップ
+
+4. **データサンプル**
+   - CSV、JSON、Excel
+   - 既存DBのダンプ
+
+5. **競合調査資料**
+   - 他サービスの機能一覧
+   - ベンチマーク結果
+
+6. **法的・契約書類**
+   - NDA、利用規約ドラフト
+   - プライバシーポリシー
+
+7. **その他**
+   - プレゼン資料
+   - マーケティング資料
+
+---
+
+## 🤖 AI による自動確認
+
+要件定義の対話フロー（`ai-rules/{{PROJECT_NAME}}/REQUIREMENTS_PROMPT.md`）を実行すると、
+AIエージェントが以下を自動で実施します：
+
+1. **reference/ 内のファイル一覧取得**
+2. **各ファイルの内容確認**（テキストファイルの場合）
+3. **画像ファイルの表示**（画像の場合）
+4. **ユーザーへの質問**
+   - 「この資料から何を反映すべきですか？」
+   - 「既存仕様で引き継ぐべきものはありますか？」
+
+---
+
+## 📋 ディレクトリ構造例
+
+```
+reference/
+├── README.md（このファイル）
+│
+├── meetings/                    # 打合せ議事録
+│   ├── 2025-10-01_kickoff.md
+│   └── 2025-10-05_requirements.pdf
+│
+├── existing_specs/              # 既存仕様書
+│   ├── current_system_spec.xlsx
+│   └── api_document.pdf
+│
+├── design/                      # デザイン資料
+│   ├── wireframe.png
+│   ├── mockup_login.png
+│   └── mockup_dashboard.png
+│
+├── data_samples/                # データサンプル
+│   ├── users.csv
+│   └── tasks_sample.json
+│
+├── competitor_analysis/         # 競合調査
+│   ├── service_A_features.md
+│   └── benchmark_results.xlsx
+│
+└── legal/                       # 法的書類
+    ├── NDA.pdf
+    └── terms_draft.md
+```
+
+---
+
+## ⚠️ 注意事項
+
+### セキュリティ
+
+- **機密情報は置かない**: 本番APIキー、パスワード等は `.env` で管理
+- **Git除外設定**: 必要に応じて `.gitignore` に追加
+- **個人情報**: テストデータは匿名化・仮データを使用
+
+### ファイル形式
+
+以下のファイル形式が推奨されます：
+
+- **テキスト**: `.md`, `.txt`（AIが直接読める）
+- **ドキュメント**: `.pdf`, `.docx`, `.xlsx`（AIが要約可能）
+- **画像**: `.png`, `.jpg`, `.svg`（AIが視覚的に確認）
+- **データ**: `.csv`, `.json`, `.yaml`（AIが解析可能）
+
+### ファイル命名規則
+
+わかりやすい命名を心がけてください：
+
+- ✅ `2025-10-01_kickoff_meeting.md`
+- ✅ `existing_api_specification.pdf`
+- ✅ `wireframe_login_page.png`
+
+- ❌ `file1.pdf`
+- ❌ `untitled.xlsx`
+
+---
+
+## 🚀 使用例
+
+### 例1: 既存システムのリプレイス
+
+既存システムの仕様書を `reference/existing_specs/` に配置：
+
+```
+reference/existing_specs/
+├── old_system_spec.pdf
+├── old_api_endpoints.md
+└── old_database_schema.sql
+```
+
+AIが自動で：
+- 既存API仕様を読み取り
+- 新システムへの移行方針を提案
+- データ移行スクリプトを生成
+
+### 例2: デザインモックアップから実装
+
+デザイナーが作成したモックアップを `reference/design/` に配置：
+
+```
+reference/design/
+├── figma_export/
+│   ├── login.png
+│   ├── dashboard.png
+│   └── task_detail.png
+└── design_system.md
+```
+
+AIが自動で：
+- 画面デザインを確認
+- 必要なコンポーネントを特定
+- 画面遷移図を生成
+
+### 例3: 打合せ議事録から要件抽出
+
+打合せ議事録を `reference/meetings/` に配置：
+
+```
+reference/meetings/
+├── 2025-10-01_kickoff.md
+└── 2025-10-05_requirements_discussion.md
+```
+
+AIが自動で：
+- 議事録から要件を抽出
+- 決定事項・未決定事項を整理
+- REQUIREMENTS.md のベースを生成
+
+---
+
+## 📝 次のステップ
+
+1. **資料を配置**
+   - 既存資料を `reference/` 内に整理
+
+2. **要件定義開始**
+   ```
+   プロジェクトを進めよう。
+
+   ai-rules/{{PROJECT_NAME}}/REQUIREMENTS_PROMPT.md を読み込んで、
+   対話形式で要件定義を進めてください。
+   ```
+
+3. **AIが自動確認**
+   - reference/ 内のファイルをAIが確認
+   - 必要な情報を抽出・整理
+
+---
+
+**作成日**: {{CURRENT_DATE}}

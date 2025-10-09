@@ -1,0 +1,378 @@
+# {{PROJECT_DISPLAY_NAME}} - API仕様
+
+**最終更新**: {{CURRENT_DATE}}
+
+---
+
+## 📋 基本情報
+
+| 項目 | 内容 |
+|------|------|
+| **ベースURL（開発）** | http://localhost:{{PORT_BACKEND}} |
+| **ベースURL（本番）** | https://api.{{PROJECT_NAME}}.com |
+| **プロトコル** | HTTP/HTTPS |
+| **データ形式** | JSON |
+| **文字コード** | UTF-8 |
+| **認証方式** | JWT Bearer Token{{OAUTH_INFO}} |
+| **APIドキュメント** | http://localhost:{{PORT_BACKEND}}/docs |
+
+---
+
+## 🔐 認証・認可
+
+### 認証フロー
+
+#### 1. ユーザー登録
+```
+POST /api/auth/register
+→ ユーザー作成
+→ アクセストークン + リフレッシュトークン返却
+```
+
+#### 2. ログイン
+```
+POST /api/auth/login
+→ 認証情報検証
+→ アクセストークン + リフレッシュトークン返却
+```
+
+#### 3. トークンリフレッシュ
+```
+POST /api/auth/refresh
+→ リフレッシュトークン検証
+→ 新しいアクセストークン返却
+```
+
+#### 4. ログアウト
+```
+POST /api/auth/logout
+→ トークン無効化
+```
+
+### トークン仕様
+
+**アクセストークン**:
+- 形式: JWT
+- 有効期限: 24時間
+- ヘッダー: `Authorization: Bearer <token>`
+- ペイロード:
+  ```json
+  {
+    "user_id": 123,
+    "email": "user@example.com",
+    "exp": 1696896000
+  }
+  ```
+
+**リフレッシュトークン**:
+- 形式: JWT
+- 有効期限: 7日間
+- 保存場所: HTTPOnly Cookie
+
+---
+
+## 📚 エンドポイント一覧
+
+### 認証系（/api/auth）
+
+| メソッド | エンドポイント | 認証 | 説明 |
+|---------|---------------|------|------|
+| POST | /api/auth/register | 不要 | ユーザー登録 |
+| POST | /api/auth/login | 不要 | ログイン |
+| POST | /api/auth/logout | 必要 | ログアウト |
+| POST | /api/auth/refresh | 必要 | トークンリフレッシュ |
+| GET | /api/auth/me | 必要 | 現在のユーザー情報取得 |
+
+### ユーザー系（/api/users）
+
+| メソッド | エンドポイント | 認証 | 説明 |
+|---------|---------------|------|------|
+| GET | /api/users | 必要 | ユーザー一覧取得 |
+| GET | /api/users/{id} | 必要 | ユーザー詳細取得 |
+| PUT | /api/users/{id} | 必要 | ユーザー情報更新 |
+| DELETE | /api/users/{id} | 必要 | ユーザー削除 |
+
+（要件定義後に追加）
+
+---
+
+## 📖 API詳細仕様
+
+### POST /api/auth/register
+
+**概要**: 新規ユーザー登録
+
+**リクエスト**:
+```json
+{
+  "email": "user@example.com",
+  "password": "SecurePass123!",
+  "full_name": "山田太郎"
+}
+```
+
+**バリデーション**:
+- `email`: 必須、メール形式、255文字以内、ユニーク
+- `password`: 必須、8文字以上、英大文字・英小文字・数字・記号のうち3種類以上
+- `full_name`: 任意、100文字以内
+
+**レスポンス（200 OK）**:
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "expires_in": 86400,
+  "user": {
+    "id": 123,
+    "email": "user@example.com",
+    "full_name": "山田太郎",
+    "created_at": "2025-10-09T10:00:00Z"
+  }
+}
+```
+
+**エラーレスポンス**:
+```json
+// 400 Bad Request（バリデーションエラー）
+{
+  "detail": [
+    {
+      "loc": ["body", "email"],
+      "msg": "value is not a valid email address",
+      "type": "value_error.email"
+    }
+  ]
+}
+
+// 409 Conflict（重複メール）
+{
+  "detail": "User with this email already exists"
+}
+```
+
+---
+
+### POST /api/auth/login
+
+**概要**: ユーザーログイン
+
+**リクエスト**:
+```json
+{
+  "email": "user@example.com",
+  "password": "SecurePass123!"
+}
+```
+
+**レスポンス（200 OK）**:
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "expires_in": 86400
+}
+```
+
+**エラーレスポンス**:
+```json
+// 401 Unauthorized（認証失敗）
+{
+  "detail": "Incorrect email or password"
+}
+```
+
+---
+
+### GET /api/auth/me
+
+**概要**: 現在のユーザー情報取得
+
+**ヘッダー**:
+```
+Authorization: Bearer <access_token>
+```
+
+**レスポンス（200 OK）**:
+```json
+{
+  "id": 123,
+  "email": "user@example.com",
+  "full_name": "山田太郎",
+  "is_active": true,
+  "created_at": "2025-10-09T10:00:00Z",
+  "updated_at": "2025-10-09T10:00:00Z"
+}
+```
+
+**エラーレスポンス**:
+```json
+// 401 Unauthorized（トークン無効）
+{
+  "detail": "Could not validate credentials"
+}
+```
+
+---
+
+### GET /api/users
+
+**概要**: ユーザー一覧取得（ページネーション付き）
+
+**ヘッダー**:
+```
+Authorization: Bearer <access_token>
+```
+
+**クエリパラメータ**:
+- `page`: ページ番号（デフォルト: 1）
+- `per_page`: 1ページあたりの件数（デフォルト: 20、最大: 100）
+- `search`: 検索キーワード（email, full_name対象）
+
+**レスポンス（200 OK）**:
+```json
+{
+  "items": [
+    {
+      "id": 123,
+      "email": "user1@example.com",
+      "full_name": "山田太郎",
+      "is_active": true,
+      "created_at": "2025-10-09T10:00:00Z"
+    },
+    {
+      "id": 124,
+      "email": "user2@example.com",
+      "full_name": "佐藤花子",
+      "is_active": true,
+      "created_at": "2025-10-09T11:00:00Z"
+    }
+  ],
+  "total": 150,
+  "page": 1,
+  "per_page": 20,
+  "pages": 8
+}
+```
+
+---
+
+## 🚨 エラーレスポンス仕様
+
+### 標準エラーフォーマット
+
+```json
+{
+  "detail": "エラーメッセージ",
+  "error_code": "ERROR_CODE",
+  "timestamp": "2025-10-09T10:00:00Z"
+}
+```
+
+### HTTPステータスコード
+
+| コード | 説明 | 使用例 |
+|-------|------|--------|
+| 200 | OK | リクエスト成功 |
+| 201 | Created | リソース作成成功 |
+| 204 | No Content | 削除成功（レスポンスボディなし） |
+| 400 | Bad Request | バリデーションエラー |
+| 401 | Unauthorized | 認証失敗・トークン無効 |
+| 403 | Forbidden | 権限不足 |
+| 404 | Not Found | リソースが存在しない |
+| 409 | Conflict | 重複データ |
+| 422 | Unprocessable Entity | 処理不可能なリクエスト |
+| 429 | Too Many Requests | レート制限超過 |
+| 500 | Internal Server Error | サーバーエラー |
+
+### エラーコード一覧
+
+| コード | 説明 |
+|-------|------|
+| `VALIDATION_ERROR` | バリデーションエラー |
+| `AUTHENTICATION_FAILED` | 認証失敗 |
+| `UNAUTHORIZED` | 未認証 |
+| `FORBIDDEN` | 権限不足 |
+| `NOT_FOUND` | リソースが存在しない |
+| `DUPLICATE_RESOURCE` | リソース重複 |
+| `RATE_LIMIT_EXCEEDED` | レート制限超過 |
+| `INTERNAL_ERROR` | サーバーエラー |
+
+---
+
+## 🔒 セキュリティ
+
+### レート制限
+- **ログイン**: 5回/分
+- **API全般**: 100回/分/ユーザー
+- **匿名API**: 10回/分/IP
+
+### CORS設定
+```python
+# 開発環境
+allowed_origins = ["http://localhost:3000"]
+
+# 本番環境
+allowed_origins = ["https://{{PROJECT_NAME}}.com"]
+```
+
+### セキュリティヘッダー
+- `X-Content-Type-Options: nosniff`
+- `X-Frame-Options: DENY`
+- `X-XSS-Protection: 1; mode=block`
+- `Strict-Transport-Security: max-age=31536000`
+
+---
+
+## 📊 ページネーション
+
+### 標準形式
+```json
+{
+  "items": [...],        // データ配列
+  "total": 150,          // 総件数
+  "page": 1,             // 現在のページ
+  "per_page": 20,        // 1ページあたりの件数
+  "pages": 8             // 総ページ数
+}
+```
+
+### クエリパラメータ
+- `page`: ページ番号（1始まり）
+- `per_page`: 1ページあたりの件数（最大100）
+
+---
+
+## 🧪 テストデータ
+
+### テストユーザー
+```json
+{
+  "email": "{{TEST_USER_EMAIL}}",
+  "password": "{{TEST_USER_PASSWORD}}"
+}
+```
+
+⚠️ **警告**: これは開発・テスト専用です。本番環境では絶対に使用しないでください。
+
+---
+
+## 📖 関連ドキュメント
+
+### AI用詳細仕様
+- [プロジェクト概要](./project_overview.md)
+- [データベース仕様](./database_specifications.md)
+- [システムアーキテクチャ](./system_architecture.md)
+
+### 人間用簡潔版
+- [API仕様（簡潔版）](../../docs/API.md)
+
+### 外部ドキュメント
+- Swagger UI: http://localhost:{{PORT_BACKEND}}/docs
+- ReDoc: http://localhost:{{PORT_BACKEND}}/redoc
+
+---
+
+**最終更新日**: {{CURRENT_DATE}}
+**更新者**: {{GITHUB_OWNER}}

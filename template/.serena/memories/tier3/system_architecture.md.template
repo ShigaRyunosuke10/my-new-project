@@ -1,0 +1,407 @@
+# {{PROJECT_DISPLAY_NAME}} - システムアーキテクチャ
+
+**最終更新**: {{CURRENT_DATE}}
+
+---
+
+## 📋 システム概要
+
+### アーキテクチャパターン
+- **パターン**: 3層アーキテクチャ（プレゼンテーション層、ビジネスロジック層、データアクセス層）
+- **通信方式**: REST API（JSON）
+- **認証方式**: JWT + bcrypt{{OAUTH_INFO}}
+- **スケーラビリティ**: 水平スケーリング可能
+
+### 技術スタック
+
+| 層 | 技術 | バージョン |
+|-----|------|----------|
+| **フロントエンド** | {{FRONTEND_TECH}} | Latest |
+| **バックエンド** | {{BACKEND_TECH}} | Latest |
+| **データベース** | {{DATABASE_TYPE}} | Latest |
+| **コンテナ** | Docker, Docker Compose | Latest |
+| **認証** | JWT, bcrypt{{OAUTH_INFO}} | - |
+| **キャッシュ** | Redis（検討中） | 7.x |
+
+---
+
+## 🏗️ システム構成図
+
+```mermaid
+graph TB
+    subgraph "クライアント"
+        Browser[ブラウザ]
+    end
+
+    subgraph "フロントエンド<br/>Port: {{PORT_FRONTEND}}"
+        Frontend[{{FRONTEND_TECH}}]
+    end
+
+    subgraph "バックエンド<br/>Port: {{PORT_BACKEND}}"
+        API[API Layer]
+        Business[Business Logic]
+        DataAccess[Data Access Layer]
+    end
+
+    subgraph "データ層"
+        DB[({{DATABASE_TYPE}})]
+        Cache[(Redis<br/>検討中)]
+    end
+
+    Browser -->|HTTP/HTTPS| Frontend
+    Frontend -->|REST API| API
+    API --> Business
+    Business --> DataAccess
+    DataAccess --> DB
+    Business -.->|Session/Cache| Cache
+```
+
+---
+
+## 🔄 データフロー
+
+### 1. ユーザー認証フロー
+
+```mermaid
+sequenceDiagram
+    participant U as ユーザー
+    participant F as フロントエンド
+    participant A as バックエンドAPI
+    participant D as データベース
+
+    U->>F: ログイン情報入力
+    F->>A: POST /api/auth/login
+    A->>D: ユーザー情報照会
+    D-->>A: ユーザー情報返却
+    A->>A: パスワード検証（bcrypt）
+    A->>A: JWTトークン生成
+    A-->>F: アクセストークン + リフレッシュトークン
+    F->>F: トークンをlocalStorageに保存
+    F-->>U: ダッシュボード表示
+```
+
+### 2. データ取得フロー（CRUD）
+
+```mermaid
+sequenceDiagram
+    participant F as フロントエンド
+    participant A as バックエンドAPI
+    participant C as キャッシュ（Redis）
+    participant D as データベース
+
+    F->>A: GET /api/resource（JWT付き）
+    A->>A: JWT検証
+    A->>C: キャッシュ確認
+    alt キャッシュヒット
+        C-->>A: キャッシュデータ返却
+    else キャッシュミス
+        A->>D: データベースクエリ
+        D-->>A: データ返却
+        A->>C: キャッシュに保存
+    end
+    A-->>F: レスポンス返却
+```
+
+---
+
+## 📂 ディレクトリ構造（詳細）
+
+### バックエンド構造
+
+```
+backend/
+├── app/
+│   ├── main.py                 # アプリケーションエントリポイント
+│   ├── config.py               # 設定管理
+│   ├── models/                 # データモデル（ORM）
+│   │   ├── __init__.py
+│   │   ├── user.py
+│   │   └── session.py
+│   ├── schemas/                # Pydanticスキーマ（バリデーション）
+│   │   ├── __init__.py
+│   │   ├── user.py
+│   │   └── auth.py
+│   ├── routers/                # APIルーティング
+│   │   ├── __init__.py
+│   │   ├── auth.py
+│   │   └── users.py
+│   ├── services/               # ビジネスロジック
+│   │   ├── __init__.py
+│   │   ├── auth_service.py
+│   │   └── user_service.py
+│   ├── repositories/           # データアクセス層
+│   │   ├── __init__.py
+│   │   ├── user_repository.py
+│   │   └── session_repository.py
+│   ├── utils/                  # ユーティリティ
+│   │   ├── __init__.py
+│   │   ├── security.py         # JWT, bcrypt
+│   │   └── dependencies.py     # 依存性注入
+│   └── middleware/             # ミドルウェア
+│       ├── __init__.py
+│       ├── auth_middleware.py
+│       └── error_handler.py
+├── tests/                      # テスト
+│   ├── test_auth.py
+│   └── test_users.py
+├── migrations/                 # データベースマイグレーション
+│   └── versions/
+├── Dockerfile
+├── requirements.txt
+└── .env.example
+```
+
+### フロントエンド構造
+
+```
+frontend/
+├── src/
+│   ├── app/                    # Next.jsアプリケーション
+│   │   ├── layout.tsx
+│   │   ├── page.tsx
+│   │   ├── login/
+│   │   ├── dashboard/
+│   │   └── api/
+│   ├── components/             # 再利用可能コンポーネント
+│   │   ├── ui/                 # UIコンポーネント（shadcn/ui）
+│   │   ├── forms/
+│   │   └── layout/
+│   ├── lib/                    # ユーティリティ・ヘルパー
+│   │   ├── api.ts              # API クライアント
+│   │   ├── auth.ts             # 認証ヘルパー
+│   │   └── utils.ts
+│   ├── hooks/                  # カスタムReact Hooks
+│   │   ├── useAuth.ts
+│   │   └── useApi.ts
+│   ├── types/                  # TypeScript型定義
+│   │   ├── user.ts
+│   │   └── api.ts
+│   └── styles/                 # スタイル（Tailwind CSS）
+├── public/                     # 静的ファイル
+├── tests/                      # テスト
+│   ├── unit/
+│   └── e2e/
+├── Dockerfile
+├── package.json
+└── .env.example
+```
+
+---
+
+## 🔐 セキュリティアーキテクチャ
+
+### 多層防御戦略
+
+```mermaid
+graph LR
+    A[ユーザー] --> B[HTTPS/TLS]
+    B --> C[CORS制限]
+    C --> D[レート制限]
+    D --> E[JWT認証]
+    E --> F[権限チェック]
+    F --> G[入力検証]
+    G --> H[ビジネスロジック]
+    H --> I[データアクセス層]
+    I --> J[データベース]
+```
+
+### セキュリティ実装詳細
+
+| 層 | 実装内容 |
+|-----|---------|
+| **通信層** | HTTPS/TLS 1.3（本番環境） |
+| **認証層** | JWT（24時間有効）、リフレッシュトークン（7日間） |
+| **認可層** | ロールベースアクセス制御（RBAC） |
+| **入力検証** | Pydantic（バックエンド）、Zod（フロントエンド） |
+| **データ層** | SQLインジェクション対策（ORMパラメータ化） |
+| **出力層** | XSS対策（エスケープ処理） |
+
+---
+
+## 📊 パフォーマンス最適化
+
+### フロントエンド最適化
+
+```mermaid
+graph TD
+    A[初回アクセス] --> B{キャッシュ確認}
+    B -->|キャッシュあり| C[Service Worker]
+    B -->|キャッシュなし| D[サーバーリクエスト]
+    D --> E[Code Splitting]
+    E --> F[Lazy Loading]
+    F --> G[画像最適化]
+    G --> H[レンダリング]
+    C --> H
+    H --> I[表示完了]
+```
+
+**実装内容**:
+- Code Splitting: 動的インポート使用
+- Lazy Loading: 画像・コンポーネントの遅延読み込み
+- Service Worker: オフライン対応（PWA）
+- 画像最適化: Next.js Image最適化
+
+### バックエンド最適化
+
+```mermaid
+graph TD
+    A[APIリクエスト] --> B{キャッシュ確認}
+    B -->|ヒット| C[Redis]
+    B -->|ミス| D[データベースクエリ]
+    D --> E[接続プール]
+    E --> F[クエリ最適化]
+    F --> G[インデックス活用]
+    G --> H[結果返却]
+    H --> I[キャッシュ保存]
+    C --> H
+```
+
+**実装内容**:
+- 接続プール: 10コネクション（通常）、最大30（ピーク時）
+- クエリ最適化: N+1問題回避、JOIN活用
+- インデックス: 検索・ソート対象カラム
+- キャッシュ: Redis（TTL: 5分〜1時間）
+
+---
+
+## 🔗 外部サービス連携
+
+### 連携サービス一覧
+
+| サービス | 用途 | 実装状態 |
+|---------|------|---------|
+| **{{FRONTEND_HOSTING}}** | フロントエンドホスティング | 予定 |
+| **{{BACKEND_HOSTING}}** | バックエンドホスティング | 予定 |
+| **GitHub** | リポジトリ管理、CI/CD | ✅ 実装済み |
+| **OAuth（Google, GitHub）** | ソーシャルログイン | {{#OAUTH_ENABLED}}予定{{/OAUTH_ENABLED}}{{^OAUTH_ENABLED}}未実装{{/OAUTH_ENABLED}} |
+| **SendGrid / AWS SES** | メール送信 | 予定 |
+| **Stripe** | 決済処理 | 未定 |
+| **AWS S3 / Cloudinary** | ファイルストレージ | 予定 |
+
+### 連携フロー例（OAuth）
+
+```mermaid
+sequenceDiagram
+    participant U as ユーザー
+    participant F as フロントエンド
+    participant A as バックエンドAPI
+    participant O as OAuthプロバイダー
+    participant D as データベース
+
+    U->>F: "Googleでログイン"をクリック
+    F->>O: OAuth認可リクエスト
+    O->>U: ログイン画面表示
+    U->>O: 認証情報入力
+    O-->>F: 認可コード返却
+    F->>A: 認可コード送信
+    A->>O: トークン交換
+    O-->>A: アクセストークン返却
+    A->>O: ユーザー情報取得
+    O-->>A: ユーザー情報返却
+    A->>D: ユーザー情報保存/更新
+    A->>A: JWTトークン生成
+    A-->>F: JWTトークン返却
+    F-->>U: ログイン完了
+```
+
+---
+
+## 🚀 デプロイアーキテクチャ
+
+### 環境構成
+
+```mermaid
+graph TB
+    subgraph "開発環境（ローカル）"
+        Dev[Docker Compose]
+    end
+
+    subgraph "ステージング環境"
+        StageF[{{FRONTEND_HOSTING}}<br/>フロントエンド]
+        StageB[{{BACKEND_HOSTING}}<br/>バックエンド]
+        StageDB[(クラウドDB)]
+    end
+
+    subgraph "本番環境"
+        ProdF[{{FRONTEND_HOSTING}}<br/>フロントエンド]
+        ProdB[{{BACKEND_HOSTING}}<br/>バックエンド<br/>ロードバランサー]
+        ProdDB[(クラウドDB<br/>レプリケーション)]
+        ProdCache[(Redis)]
+    end
+
+    Dev -->|Push| GitHub[GitHub]
+    GitHub -->|CI/CD| StageF
+    GitHub -->|CI/CD| StageB
+    StageF -->|テスト通過| ProdF
+    StageB -->|テスト通過| ProdB
+```
+
+### CI/CDパイプライン
+
+```yaml
+# GitHub Actions例
+jobs:
+  test:
+    - Lint & Format チェック
+    - 単体テスト実行
+    - E2Eテスト実行
+
+  build:
+    - Dockerイメージビルド
+    - セキュリティスキャン
+
+  deploy-staging:
+    - ステージング環境デプロイ
+    - スモークテスト
+
+  deploy-production:
+    - 手動承認
+    - 本番環境デプロイ
+    - ヘルスチェック
+```
+
+---
+
+## 📈 監視・ログ
+
+### 監視対象
+
+| 項目 | ツール | 閾値 |
+|------|--------|------|
+| **アプリケーション応答時間** | New Relic / Datadog | 平均 < 200ms |
+| **エラーレート** | Sentry | < 1% |
+| **データベースクエリ時間** | Slow Query Log | < 100ms |
+| **CPU使用率** | CloudWatch | < 70% |
+| **メモリ使用率** | CloudWatch | < 80% |
+
+### ログ管理
+
+```python
+# ログフォーマット
+{
+  "timestamp": "2025-10-09T10:00:00Z",
+  "level": "INFO",
+  "service": "backend-api",
+  "message": "User login successful",
+  "user_id": 123,
+  "request_id": "abc123",
+  "duration_ms": 45
+}
+```
+
+---
+
+## 📖 関連ドキュメント
+
+### AI用詳細仕様
+- [プロジェクト概要](./project_overview.md)
+- [データベース仕様](./database_specifications.md)
+- [API仕様](./api_specifications.md)
+
+### 人間用簡潔版
+- [環境構築手順](../../docs/SETUP.md)
+
+---
+
+**最終更新日**: {{CURRENT_DATE}}
+**更新者**: {{GITHUB_OWNER}}

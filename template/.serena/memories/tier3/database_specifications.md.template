@@ -1,0 +1,280 @@
+# {{PROJECT_DISPLAY_NAME}} - データベース仕様
+
+**最終更新**: {{CURRENT_DATE}}
+
+---
+
+## 📋 基本情報
+
+| 項目 | 内容 |
+|------|------|
+| **データベース** | {{DATABASE_TYPE}} |
+| **接続先** | localhost (開発環境) |
+| **ポート** | 標準ポート（PostgreSQL: 5432, MySQL: 3306） |
+| **データベース名** | {{DATABASE_NAME}} |
+| **文字コード** | UTF-8 |
+| **タイムゾーン** | UTC |
+
+---
+
+## 🗂️ テーブル一覧
+
+（要件定義・設計完了後に追加）
+
+### 例: ユーザー管理系
+- `users` - ユーザー情報
+- `sessions` - セッション情報
+- `roles` - ロール情報
+- `permissions` - 権限情報
+
+### 例: ビジネスロジック系
+（プロジェクト固有のテーブル）
+
+---
+
+## 📊 ER図
+
+```mermaid
+erDiagram
+    %% 要件定義後にER図を記述
+    %% 例:
+    %% USERS ||--o{ SESSIONS : has
+    %% USERS {
+    %%     int id PK
+    %%     string email UK
+    %%     string password_hash
+    %%     datetime created_at
+    %% }
+    %% SESSIONS {
+    %%     int id PK
+    %%     int user_id FK
+    %%     string token
+    %%     datetime expires_at
+    %% }
+```
+
+（要件定義・設計完了後にMermaid記法で記述）
+
+---
+
+## 📝 テーブル定義（詳細）
+
+### users（ユーザー）
+
+**概要**: ユーザーアカウント情報を管理
+
+| カラム名 | 型 | 制約 | デフォルト | 説明 |
+|---------|-----|------|-----------|------|
+| id | INTEGER | PK, AUTO_INCREMENT | - | ユーザーID |
+| email | VARCHAR(255) | UNIQUE, NOT NULL | - | メールアドレス |
+| password_hash | VARCHAR(255) | NOT NULL | - | パスワードハッシュ（bcrypt） |
+| full_name | VARCHAR(100) | NULL | - | フルネーム |
+| is_active | BOOLEAN | NOT NULL | TRUE | アクティブ状態 |
+| created_at | TIMESTAMP | NOT NULL | CURRENT_TIMESTAMP | 作成日時 |
+| updated_at | TIMESTAMP | NOT NULL | CURRENT_TIMESTAMP | 更新日時 |
+
+**インデックス**:
+- PRIMARY KEY: `id`
+- UNIQUE INDEX: `email`
+- INDEX: `created_at`
+
+**制約**:
+- `email` は有効なメールアドレス形式
+- `password_hash` は60文字（bcryptハッシュ）
+
+---
+
+### sessions（セッション）
+
+**概要**: ユーザーセッション管理
+
+| カラム名 | 型 | 制約 | デフォルト | 説明 |
+|---------|-----|------|-----------|------|
+| id | INTEGER | PK, AUTO_INCREMENT | - | セッションID |
+| user_id | INTEGER | FK, NOT NULL | - | ユーザーID |
+| token | VARCHAR(255) | UNIQUE, NOT NULL | - | セッショントークン（JWT） |
+| expires_at | TIMESTAMP | NOT NULL | - | 有効期限 |
+| created_at | TIMESTAMP | NOT NULL | CURRENT_TIMESTAMP | 作成日時 |
+
+**インデックス**:
+- PRIMARY KEY: `id`
+- UNIQUE INDEX: `token`
+- INDEX: `user_id`, `expires_at`
+
+**外部キー**:
+- `user_id` → `users.id` (ON DELETE CASCADE)
+
+---
+
+## 🔄 マイグレーション履歴
+
+### マイグレーション管理方針
+- **ツール**: Alembic (FastAPI/Django) / Prisma (Express)
+- **命名規則**: `YYYYMMDDHHMMSS_description.py`
+- **ロールバック**: 必ず`downgrade()`関数を実装
+
+### マイグレーション一覧
+
+| 日付 | ファイル名 | 説明 | 適用状態 |
+|------|-----------|------|---------|
+| {{CURRENT_DATE}} | `20251009000001_initial.py` | 初期テーブル作成 | ⏸️ 未適用 |
+
+（実装中に追加）
+
+---
+
+## 🔐 セキュリティ仕様
+
+### パスワード管理
+- **ハッシュ化**: bcrypt（コスト係数: 12）
+- **ソルト**: bcrypt自動生成
+- **最小文字数**: 8文字
+- **必須要素**: 英大文字、英小文字、数字、記号のうち3種類以上
+
+### セッション管理
+- **トークン形式**: JWT
+- **有効期限**: 24時間（アクセストークン）
+- **リフレッシュトークン**: 7日間
+- **トークン保存**: HTTPOnly Cookie
+
+### データ暗号化
+- **機密情報**: AES-256で暗号化
+- **暗号化対象**: クレジットカード情報、個人識別番号等
+- **鍵管理**: 環境変数（`ENCRYPTION_KEY`）
+
+---
+
+## 🔍 インデックス戦略
+
+### 基本方針
+- プライマリキー: すべてのテーブルに自動付与
+- 外部キー: 必ずインデックス作成
+- 検索条件: WHERE句で頻繁に使用するカラム
+- ソート条件: ORDER BY句で使用するカラム
+
+### インデックス一覧
+
+| テーブル | カラム | タイプ | 目的 |
+|---------|--------|--------|------|
+| users | email | UNIQUE | ログイン時の高速検索 |
+| users | created_at | INDEX | 登録日時順のソート |
+| sessions | token | UNIQUE | セッション検証の高速化 |
+| sessions | user_id | INDEX | ユーザー別セッション取得 |
+| sessions | expires_at | INDEX | 期限切れセッションの削除 |
+
+（実装中に追加）
+
+---
+
+## 📈 パフォーマンス最適化
+
+### クエリ最適化方針
+- N+1問題の回避（JOIN、eager loading使用）
+- 不要なカラムの取得回避（SELECT *を避ける）
+- ページネーション実装（LIMIT, OFFSET）
+- 適切なインデックス設計
+
+### 接続プール設定
+```python
+# 例: FastAPI + SQLAlchemy
+pool_size = 10          # 通常の接続数
+max_overflow = 20       # ピーク時の追加接続数
+pool_timeout = 30       # 接続待機時間（秒）
+pool_recycle = 3600     # 接続の再利用時間（秒）
+```
+
+### キャッシング戦略
+- **Redis**: セッション情報、頻繁にアクセスされるデータ
+- **TTL**: 5分〜1時間（データ特性に応じて設定）
+
+---
+
+## 🔄 バックアップ・リカバリ
+
+### バックアップ方針
+- **頻度**: 毎日1回（深夜3:00 JST）
+- **保存期間**: 30日間
+- **保存先**: AWS S3 / Google Cloud Storage
+- **バックアップ種別**: 完全バックアップ
+
+### リカバリ手順
+```bash
+# PostgreSQLの例
+pg_restore -U {{DATABASE_USER}} -d {{DATABASE_NAME}} backup_file.dump
+
+# MySQLの例
+mysql -u {{DATABASE_USER}} -p {{DATABASE_NAME}} < backup_file.sql
+```
+
+---
+
+## 📊 データ整合性チェック
+
+### 定期チェック項目
+- [ ] 孤立レコードの確認（外部キー制約違反）
+- [ ] NULL値の妥当性確認
+- [ ] 重複データの確認
+- [ ] タイムスタンプの整合性
+
+### チェックスクリプト
+```sql
+-- 孤立セッションの確認
+SELECT s.* FROM sessions s
+LEFT JOIN users u ON s.user_id = u.id
+WHERE u.id IS NULL;
+
+-- 期限切れセッションの削除
+DELETE FROM sessions WHERE expires_at < NOW();
+```
+
+---
+
+## 🚨 トラブルシューティング
+
+### よくある問題
+
+#### 1. 接続エラー
+**症状**: `could not connect to server`
+**原因**: データベースコンテナが起動していない
+**対処**:
+```bash
+docker-compose ps
+docker-compose restart db
+```
+
+#### 2. マイグレーションエラー
+**症状**: `duplicate key value violates unique constraint`
+**原因**: データの重複
+**対処**:
+```bash
+# ロールバック
+alembic downgrade -1
+# データ修正後、再実行
+alembic upgrade head
+```
+
+#### 3. パフォーマンス低下
+**症状**: クエリ実行時間が長い
+**原因**: インデックス不足
+**対処**:
+```sql
+EXPLAIN ANALYZE SELECT * FROM users WHERE email = 'test@example.com';
+-- インデックスが使われているか確認
+```
+
+---
+
+## 📖 関連ドキュメント
+
+### AI用詳細仕様
+- [プロジェクト概要](./project_overview.md)
+- [API仕様](./api_specifications.md)
+- [システムアーキテクチャ](./system_architecture.md)
+
+### 人間用簡潔版
+- [データベース設計（簡潔版）](../../docs/DATABASE.md)
+
+---
+
+**最終更新日**: {{CURRENT_DATE}}
+**更新者**: {{GITHUB_OWNER}}

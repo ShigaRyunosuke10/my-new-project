@@ -1,0 +1,314 @@
+# Claude Code Configuration
+
+このファイルはClaude Codeの動作設定を定義します。
+
+## 基本ルール
+
+- 回答は日本語で行う
+- TODO管理を活用してタスク進行を可視化
+
+## リポジトリ設定
+
+- **リポジトリ名**: {{PROJECT_NAME}}
+- **Owner**: {{GITHUB_OWNER}}
+- **Git remote**: origin
+
+## ポート設定（固定・変更禁止）
+
+| サービス | ポート |
+|---------|--------|
+| フロントエンド | 3000 |
+| バックエンド | 8000 |
+
+ポート競合時は他のプロセスをkillして既定ポートを使用すること。
+
+## 開発ワークフロー
+
+### セッション開始時の必須フロー
+
+**⚠️ 最優先**: `next_session_prompt.md`の確認
+
+```bash
+# 1. next_session_prompt.mdの存在確認
+ls next_session_prompt.md 2>/dev/null
+
+# 2a. ファイルが存在する場合
+#     → next_session_prompt.mdを読み込み、記載内容に従って作業開始
+
+# 2b. ファイルが存在しない場合
+#     → 以下の標準フローを実施
+```
+
+**標準フロー（next_session_prompt.mdがない場合）**:
+```
+1. Serenaメモリ読み込み
+   mcp__serena__activate_project
+   mcp__serena__list_memories
+   mcp__serena__read_memory("current_issues_and_priorities.md")
+   mcp__serena__read_memory("phase_progress.md")  # フェーズ管理時
+
+2. Git状態確認
+   git branch
+   git status
+   git log -1
+
+3. 作業開始
+```
+
+詳細: [ai-rules/common/SESSION_MANAGEMENT.md](./ai-rules/common/SESSION_MANAGEMENT.md)
+
+### 基本フロー
+```
+セッション開始（next_session_prompt.md or Serenaメモリ読み込み）
+    ↓
+フェーズ・仕様確認
+    ↓
+ブランチ作成
+    ↓
+実装・修正
+    ↓
+e2e-tester サブエージェント実行 ← 必須（コミット前）
+    ├─ テスト成功 → コミット
+    └─ テスト失敗 → 修正 → ループ
+    ↓
+PR作成
+    ↓
+code-reviewer サブエージェント実行 ← 必須
+    ├─ マージ可 → マージ
+    └─ 要修正 → 修正 → ループ
+    ↓
+docs-updater サブエージェント実行 ← 必須（マージ後）
+    ↓
+フェーズ完了確認（必要に応じて）
+```
+
+詳細は以下を参照：
+- [ai-rules/common/WORKFLOW.md](./ai-rules/common/WORKFLOW.md) - 汎用ワークフロー
+- [ai-rules/common/PHASE_MANAGEMENT.md](./ai-rules/common/PHASE_MANAGEMENT.md) - フェーズ管理
+- [ai-rules/{{PROJECT_NAME}}/WORKFLOW.md](./ai-rules/{{PROJECT_NAME}}/WORKFLOW.md) - {{PROJECT_NAME}}固有ワークフロー
+
+### セッション開始時（必須）
+
+**⚠️ 注**: セッション開始フローは上記「セッション開始時の必須フロー」セクションを参照
+
+要約:
+1. `next_session_prompt.md`の確認（最優先）
+2. なければSerenaメモリ読み込み
+3. フェーズ・仕様確認
+
+### 作業開始時
+1. 専用ブランチを作成（`feat-*`, `fix-*`, `docs-*` 等）
+2. mainブランチでの直接作業は絶対禁止
+
+### 作業終了時
+1. 変更をコミット（[コミット規約](./ai-rules/common/COMMIT_GUIDELINES.md)に従う）
+2. リモートブランチにpush
+3. PRを作成（[PR規約](./ai-rules/{{PROJECT_NAME}}/PR_AND_REVIEW.md)に従う）
+4. **必須**: code-reviewer サブエージェントでレビューを依頼
+5. **code-reviewer指摘対応**（[Issue管理ガイドライン](./ai-rules/{{PROJECT_NAME}}/ISSUE_GUIDELINES.md)に従う）
+   - **原則: その場で即修正**（Issueを溜めない）
+   - Critical: 必ず即修正
+   - Major: 原則即修正（30分以内必須）
+   - Minor: 5分以内なら即修正、それ以外も推奨
+   - 例外的にIssue化するのは1時間超の大規模修正のみ（要相談）
+6. レビュー完了後にmainへマージ
+7. **必須**: docs-updater サブエージェントでドキュメントを自動更新
+
+⚠️ **重要**: **PR作成→レビュー→修正→マージ→ドキュメント更新までを1セットの作業として完了させる**
+
+### マージ後の必須作業（docs-updater サブエージェント）
+1. **PR情報の取得と分析**
+   - PR詳細・変更ファイル一覧・diffを確認
+   - 変更内容を分類（DB/API/環境設定/機能実装/リファクタリング）
+
+2. **Serenaメモリの更新**（必須）
+   - `current_issues_and_priorities.md` - 完了タスク削除、新課題追加（⭐最優先）
+   - `implementation_status.md` - 完了機能記録、進捗率更新（⭐必須）
+   - `database_specifications.md` - DB変更時に更新
+   - `api_specifications.md` - API変更時に更新
+   - `phase_progress.md` - フェーズ管理時に更新
+
+3. **docs/ の更新判断**
+   - 仕様確定時のみ更新（試験的な実装は対象外）
+   - `docs/DATABASE.md` - DB変更確定時
+   - `docs/API.md` - API変更確定時
+   - `docs/SETUP.md` - 環境設定変更時
+   - `docs/README.md` - プロジェクト概要変更時
+
+4. **CLAUDE.mdの更新確認**
+   - サブエージェント追加・ワークフロー変更時のみ
+
+**サブエージェント設定**: `.claude/agents/docs-updater.md` に定義
+
+### フェーズ完了時（該当する場合）
+1. **仕様との整合性確認**（ユーザーと最終確認）
+2. 全機能の動作確認・E2Eテスト
+3. ドキュメント完全更新（docs/PHASES.md + Serenaメモリ）
+4. 次フェーズの準備
+
+## コミット前の必須確認
+
+- 動作確認を実施
+- E2Eテストを実施（[テストガイド](./ai-rules/{{PROJECT_NAME}}/TESTING.md)）
+- エラーがない状態でコミット
+
+## 命名規則
+
+詳細は [ai-rules/common/NAMING_CONVENTIONS.md](./ai-rules/common/NAMING_CONVENTIONS.md) を参照。
+
+## テスト
+
+詳細は [ai-rules/{{PROJECT_NAME}}/TESTING.md](./ai-rules/{{PROJECT_NAME}}/TESTING.md) を参照。
+
+## サブエージェント
+
+このプロジェクトでは以下の専門サブエージェントを活用します：
+
+### 1. code-reviewer（コードレビュー専門家）
+**用途**: PR作成後、マージ前の必須レビュー
+
+**実行タイミング**: PR作成直後（settings.jsonでリマインダー自動表示）
+
+**評価基準**:
+- Critical: マージブロッカー（セキュリティ・データ破損リスク）
+- Major: 早急な修正推奨（バグ・パフォーマンス問題）
+- Minor: 改善推奨（コード品質・可読性）
+
+**設定**: [.claude/agents/code-reviewer.md](.claude/agents/code-reviewer.md)
+
+詳細: [ai-rules/{{PROJECT_NAME}}/PR_AND_REVIEW.md](./ai-rules/{{PROJECT_NAME}}/PR_AND_REVIEW.md)
+
+### 2. e2e-tester（E2Eテスト専門家）
+**用途**: 実装完了後、コミット前の動作確認
+
+**実行タイミング**: コミット前（必須）
+
+**テスト範囲**:
+- 正常系: 基本的な操作フロー
+- 異常系: 不正入力のエラーハンドリング
+- エッジケース: 境界値・特殊文字
+
+**設定**: [.claude/agents/e2e-tester.md](.claude/agents/e2e-tester.md)
+
+詳細: [ai-rules/{{PROJECT_NAME}}/TESTING.md](./ai-rules/{{PROJECT_NAME}}/TESTING.md)
+
+### 3. docs-updater（ドキュメント更新専門家）
+**用途**: PRマージ後のドキュメント自動更新
+
+**実行タイミング**: マージ直後（必須）
+
+**更新対象**:
+- Serenaメモリ: current_issues_and_priorities.md, implementation_status.md（必須）
+- docs/: 仕様確定時のみ（DATABASE.md, API.md等）
+
+**設定**: [.claude/agents/docs-updater.md](.claude/agents/docs-updater.md)
+
+詳細: [ai-rules/{{PROJECT_NAME}}/DOCUMENTATION_GUIDE.md](./ai-rules/{{PROJECT_NAME}}/DOCUMENTATION_GUIDE.md)
+
+## MCPサーバー
+
+詳細は [ai-rules/{{PROJECT_NAME}}/SETUP_AND_MCP.md](./ai-rules/{{PROJECT_NAME}}/SETUP_AND_MCP.md) を参照。
+
+## Serena MCP活用（重要）
+
+**最重要**: 毎セッション開始時にSerenaメモリから状況を把握すること。
+
+### セッション開始時の必須フロー
+```
+1. mcp__serena__activate_project
+2. mcp__serena__list_memories
+3. mcp__serena__read_memory("current_issues_and_priorities.md")
+4. 作業開始
+```
+
+### 主要Serenaメモリファイル
+- `current_issues_and_priorities.md` - 現在のIssue・優先度（**最重要**）
+- `phase_progress.md` - フェーズ進捗管理（**フェーズ管理時・最重要**）
+- `project_overview.md` - プロジェクト概要
+- `database_specifications.md` - DB詳細仕様
+- `api_specifications.md` - API詳細仕様
+- `system_architecture.md` - システムアーキテクチャ
+- `implementation_status.md` - 実装状況・進捗
+
+詳細は [ai-rules/{{PROJECT_NAME}}/DOCUMENTATION_GUIDE.md](./ai-rules/{{PROJECT_NAME}}/DOCUMENTATION_GUIDE.md) を参照
+
+### いつSerenaを使うか
+- ✅ セッション開始時（メモリ読み込み）
+- ✅ プロジェクト全体把握
+- ✅ 複数ファイルにまたがる変更
+- ✅ 影響範囲調査
+- ❌ 1-2個のファイルの簡単な編集（通常ツールで十分）
+
+詳細: [ai-rules/{{PROJECT_NAME}}/SETUP_AND_MCP.md](./ai-rules/{{PROJECT_NAME}}/SETUP_AND_MCP.md)
+
+## Context7利用
+
+最新ライブラリ仕様を反映させたい場合に使用。
+
+### 自動取得タイミング（Claude判断）
+
+以下の場合、Claudeが自動的にContext7で最新仕様を取得：
+
+1. **新規API実装時** → {{BACKEND_TECH}}最新仕様
+2. **フロントエンド機能追加時** → {{FRONTEND_TECH}}最新仕様
+3. **ライブラリエラー解決時** → 該当ライブラリの最新仕様
+4. **未知のライブラリ使用時** → 該当ライブラリの公式ドキュメント
+
+### 手動取得
+
+ユーザーが明示的に要求する場合：
+
+```
+use context7 — [質問内容]
+```
+
+**例**:
+- `use context7 — {{BACKEND_TECH}} 依存性注入パターン`
+- `use context7 — {{FRONTEND_TECH}} エラーハンドリング`
+
+## プロジェクト固有情報
+
+以下は `docs/` ディレクトリを参照：
+
+- [プロジェクト概要](./docs/README.md)
+- [環境構築手順](./docs/SETUP.md)
+- [API仕様（簡潔版）](./docs/API.md)
+- [データベース設計（簡潔版）](./docs/DATABASE.md)
+
+詳細な技術仕様は `.serena/memories/` を参照（[ドキュメント管理ガイド](./ai-rules/{{PROJECT_NAME}}/DOCUMENTATION_GUIDE.md)）
+
+## ファイル構造
+
+詳細は [ai-rules/README.md](./ai-rules/README.md) を参照。
+
+## settings.json設定
+
+設定ファイルの詳細な編集方法は [ai-rules/common/SETTINGS_JSON_GUIDE.md](./ai-rules/common/SETTINGS_JSON_GUIDE.md) を参照。
+
+**重要な設定ルール**:
+- **MCPツールの自動承認**: `.claude/settings.local.json` の `permissions.allow` で個別指定（推奨）
+- **通常ツールの自動承認**: `.claude/settings.json` の `permissions.allow` で制御
+- ⚠️ `enableAllProjectMcpServers: true` は全MCPツールを自動承認（破壊的操作含む・非推奨）
+
+### セキュリティポリシー
+
+settings.jsonで以下を設定済み：
+- `.env`ファイルへの書き込み禁止
+- `.git`ディレクトリへの直接書き込み禁止
+- 危険な削除コマンド（`rm -rf`）の禁止
+- 強制push（`git push --force`）の禁止
+
+### 自動化機能
+
+settings.jsonで以下を設定済み：
+- セッション開始時に`git fetch`を自動実行
+- ファイル編集時に`git add .`を自動実行
+- PR作成時にcode-reviewerリマインダーを自動表示
+- タスク完了時・確認要求時に通知音を再生
+
+## 注意事項
+
+- .envファイルはUPPER_SNAKE_CASE、値にクォート無し
+- 機密情報は.gitignoreに追加
+- ファイル作成時はGitにコミットすべきか判断し、不要なら.gitignoreへ
+- 会話履歴は30日後に自動削除（settings.jsonで設定済み）

@@ -794,50 +794,177 @@ def print_next_steps(config: Dict[str, str]):
     print(f"\n{Color.OKGREEN}Happy Coding! 🚀{Color.ENDC}\n")
 
 
+def get_recommended_config(project_name: str, project_display_name: str, project_description: str, github_owner: str) -> Dict[str, str]:
+    """おすすめ設定を返す"""
+    import secrets
+    from datetime import datetime
+
+    config = {
+        # プロジェクト基本情報
+        'PROJECT_NAME': project_name,
+        'PROJECT_DISPLAY_NAME': project_display_name,
+        'PROJECT_DESCRIPTION': project_description,
+        'GITHUB_OWNER': github_owner,
+        'CURRENT_DATE': datetime.now().strftime('%Y-%m-%d'),
+
+        # 技術スタック（おすすめ）
+        'BACKEND_TECH': 'FastAPI',
+        'FRONTEND_TECH': 'Next.js',
+        'DATABASE_TYPE': 'PostgreSQL',
+        'DATABASE_IMAGE': 'postgres:15-alpine',
+        'DATABASE_PORT': '5432',
+        'DATABASE_INTERNAL_PORT': '5432',
+
+        # データベース認証情報
+        'DATABASE_NAME': f"{project_name.replace('-', '_')}_db",
+        'DATABASE_USER': 'dbuser',
+        'DATABASE_PASSWORD': 'Dev!Pass123',
+
+        # ホスティング（おすすめ）
+        'FRONTEND_HOSTING': 'Vercel',
+        'BACKEND_HOSTING': 'Render',
+
+        # ポート設定（固定）
+        'PORT_FRONTEND': '3000',
+        'PORT_BACKEND': '8000',
+
+        # Serenaメモリ（tier2推奨）
+        'SERENA_TIER': 'tier2',
+
+        # テストユーザー
+        'TEST_USER_EMAIL': 'qa+test@example.com',
+        'TEST_USER_PASSWORD': 'TestPass!123',
+
+        # 認証（JWT + OAuth有効）
+        'USE_JWT': 'true',
+        'USE_OAUTH': 'true',
+        'OAUTH_ENABLED': 'true',
+        'OAUTH_ENV_VARS': "\n      - OAUTH_GOOGLE_CLIENT_ID=${OAUTH_GOOGLE_CLIENT_ID}\n      - OAUTH_GOOGLE_CLIENT_SECRET=${OAUTH_GOOGLE_CLIENT_SECRET}\n      - OAUTH_GITHUB_CLIENT_ID=${OAUTH_GITHUB_CLIENT_ID}\n      - OAUTH_GITHUB_CLIENT_SECRET=${OAUTH_GITHUB_CLIENT_SECRET}",
+        'OAUTH_FRONTEND_ENV': "\n      - NEXT_PUBLIC_OAUTH_ENABLED=true",
+        'OAUTH_INFO': ' + OAuth（Google, GitHub）',
+
+        # JWT Secret
+        'JWT_SECRET': secrets.token_urlsafe(32),
+
+        # MCP Servers（すべて有効）
+        'USE_CONTEXT7': 'true',
+        'USE_GITHUB': 'true',
+        'USE_SERENA': 'true',
+        'USE_PLAYWRIGHT': 'true',
+        'USE_DESKTOP_COMMANDER': 'true',
+        'USE_CODEX': 'true',
+        'USE_SUPABASE': 'false',
+        'USE_IDE': 'false',
+    }
+
+    # Docker設定の生成
+    db_config = {
+        "postgresql": {
+            "IMAGE": "postgres:15-alpine",
+            "PORT": "5432",
+            "VOLUME_NAME": "postgres_data",
+            "VOLUME_PATH": "/var/lib/postgresql/data",
+            "ENV_VARS": f"\n      - POSTGRES_DB={config['DATABASE_NAME']}\n      - POSTGRES_USER={config['DATABASE_USER']}\n      - POSTGRES_PASSWORD={config['DATABASE_PASSWORD']}",
+            "URL": f"postgresql://{config['DATABASE_USER']}:{config['DATABASE_PASSWORD']}@db:5432/{config['DATABASE_NAME']}"
+        }
+    }
+
+    backend_commands = {
+        "fastapi": "uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    }
+
+    frontend_commands = {
+        "nextjs": "npm run dev"
+    }
+
+    config['DATABASE_VOLUME_NAME'] = db_config['postgresql']['VOLUME_NAME']
+    config['DATABASE_VOLUME_PATH'] = db_config['postgresql']['VOLUME_PATH']
+    config['DATABASE_ENV_VARS'] = db_config['postgresql']['ENV_VARS']
+    config['DATABASE_URL'] = db_config['postgresql']['URL']
+    config['BACKEND_COMMAND'] = backend_commands['fastapi']
+    config['FRONTEND_COMMAND'] = frontend_commands['nextjs']
+
+    return config
+
+
 def main():
     """メイン処理"""
     print_header("Claude Code プロジェクトテンプレート初期化")
 
-    print(f"{Color.OKCYAN}対話形式でプロジェクトを初期化します。{Color.ENDC}")
-    print(f"{Color.OKCYAN}各質問に回答してください。{Color.ENDC}\n")
+    # モード選択
+    print(f"{Color.OKCYAN}初期化モードを選択してください:{Color.ENDC}\n")
+    print("  1. おすすめ設定で自動生成（簡単・高速）")
+    print("  2. カスタム設定（詳細に選択）\n")
 
-    # 設定収集
+    mode = ask_choice("モードを選択", ["おすすめ設定", "カスタム設定"], default=1)
+
     config = {}
 
-    # 1. プロジェクト基本情報
-    config.update(collect_project_info())
+    if mode == 1:
+        # おすすめ設定モード
+        print_header("おすすめ設定モード")
+        print_info("最小限の質問で、実績のある技術スタックで初期化します\n")
 
-    # 2. 技術スタック
-    config.update(collect_tech_stack())
+        print(f"{Color.BOLD}おすすめ構成:{Color.ENDC}")
+        print("  • バックエンド: FastAPI (Python)")
+        print("  • フロントエンド: Next.js (React)")
+        print("  • データベース: PostgreSQL")
+        print("  • 認証: JWT + OAuth (Google/GitHub)")
+        print("  • ホスティング: Vercel (フロント) + Render (バック)")
+        print("  • Serenaメモリ: Tier 2 (中規模プロジェクト)\n")
 
-    # 3. ホスティング先
-    config.update(collect_hosting_info())
+        # 最小限の質問のみ
+        project_name = ""
+        while True:
+            project_name = ask_input("[1/4] プロジェクト名（英小文字・数字・ハイフン）", "my-awesome-app")
+            if validate_project_name(project_name):
+                break
 
-    # 4. ポート設定
-    config.update(collect_port_settings())
+        project_display_name = ask_input("[2/4] プロジェクト表示名", project_name.replace('-', ' ').title())
 
-    # 5. データベース認証情報
-    config.update(collect_database_credentials())
+        project_description = ask_input("[3/4] プロジェクト説明（1行）", "素晴らしいWebアプリケーション")
 
-    # 6. Serenaメモリ複雑度
-    config.update(collect_serena_tier())
+        github_owner = ask_input("[4/4] GitHubユーザー名/組織名", "your-username")
 
-    # 7. テストユーザー
-    config.update(collect_test_user())
+        # おすすめ設定を自動生成
+        config = get_recommended_config(project_name, project_display_name, project_description, github_owner)
 
-    # 8. 認証方式
-    config.update(collect_auth_settings())
+        print_success("\n✨ おすすめ設定でプロジェクトを生成します！")
 
-    # 9. MCPサーバー
-    config.update(collect_mcp_servers())
+    else:
+        # カスタム設定モード
+        print_header("カスタム設定モード")
+        print(f"{Color.OKCYAN}対話形式でプロジェクトを初期化します。{Color.ENDC}")
+        print(f"{Color.OKCYAN}各質問に回答してください。{Color.ENDC}\n")
 
-    # 自動生成設定
-    import datetime
-    import secrets
+        # 1. プロジェクト基本情報
+        config.update(collect_project_info())
 
-    config['CURRENT_DATE'] = datetime.datetime.now().strftime("%Y-%m-%d")
-    config['JWT_SECRET'] = secrets.token_urlsafe(32)
+        # 2. 技術スタック
+        config.update(collect_tech_stack())
 
+        # 3. ホスティング先
+        config.update(collect_hosting_info())
+
+        # 4. ポート設定
+        config.update(collect_port_settings())
+
+        # 5. データベース認証情報
+        config.update(collect_database_credentials())
+
+        # 6. Serenaメモリ複雑度
+        config.update(collect_serena_tier())
+
+        # 7. テストユーザー
+        config.update(collect_test_user())
+
+        # 8. 認証方式
+        config.update(collect_auth_settings())
+
+        # 9. MCP Servers
+        config.update(collect_mcp_servers())
+
+    # 共通処理（両モード共通）
     # プレースホルダー設定（空のAPI key）
     config['CONTEXT7_API_KEY'] = "YOUR_CONTEXT7_API_KEY"
     config['GITHUB_TOKEN'] = "YOUR_GITHUB_TOKEN"
@@ -849,7 +976,7 @@ def main():
     print(f"{Color.BOLD}バックエンド:{Color.ENDC} {config['BACKEND_TECH']}")
     print(f"{Color.BOLD}フロントエンド:{Color.ENDC} {config['FRONTEND_TECH']}")
     print(f"{Color.BOLD}データベース:{Color.ENDC} {config['DATABASE_TYPE']}")
-    print(f"{Color.BOLD}ホスティング:{Color.ENDC} {config['HOSTING_FRONTEND']} (FE) / {config['HOSTING_BACKEND']} (BE)")
+    print(f"{Color.BOLD}ホスティング:{Color.ENDC} {config['FRONTEND_HOSTING']} (FE) / {config['BACKEND_HOSTING']} (BE)")
     print(f"{Color.BOLD}Serena Tier:{Color.ENDC} {config['SERENA_TIER'].upper()}")
     print()
 

@@ -7,11 +7,14 @@ Claude Code Project Template Initializer
 
 使用方法:
     python init_project.py
+    python init_project.py --auto --config config.json
 
-バージョン: 1.0
+バージョン: 2.0
 作成日: 2025-10-09
 """
 
+import argparse
+import json
 import os
 import re
 import shutil
@@ -992,9 +995,57 @@ def main():
     print_next_steps(config)
 
 
+def load_config_from_json(config_path: str) -> Dict[str, str]:
+    """JSONファイルから設定を読み込み"""
+    with open(config_path, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+
+def main_auto(config_path: str):
+    """自動実行モード（対話なし）"""
+    print_header("Claude Code プロジェクトテンプレート初期化（自動モード）")
+
+    # JSON読み込み
+    config = load_config_from_json(config_path)
+
+    print_success(f"設定ファイル読み込み: {config_path}")
+    print(f"{Color.BOLD}プロジェクト名:{Color.ENDC} {config['PROJECT_NAME']}")
+    print(f"{Color.BOLD}バックエンド:{Color.ENDC} {config['BACKEND_TECH']}")
+    print(f"{Color.BOLD}フロントエンド:{Color.ENDC} {config['FRONTEND_TECH']}")
+    print()
+
+    # プロジェクト生成
+    generate_project(config)
+
+    # 次のステップ表示
+    print_next_steps(config)
+
+
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Claude Code Project Template Initializer"
+    )
+    parser.add_argument(
+        "--auto",
+        action="store_true",
+        help="自動実行モード（対話なし）"
+    )
+    parser.add_argument(
+        "--config",
+        type=str,
+        help="設定JSONファイルのパス"
+    )
+
+    args = parser.parse_args()
+
     try:
-        main()
+        if args.auto:
+            if not args.config:
+                print_error("--autoモードでは--configオプションが必須です")
+                sys.exit(1)
+            main_auto(args.config)
+        else:
+            main()
     except KeyboardInterrupt:
         print_error("\n\n初期化をキャンセルしました")
         sys.exit(1)

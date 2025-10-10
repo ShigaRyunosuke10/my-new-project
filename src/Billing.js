@@ -19,9 +19,14 @@ function updateBillingSheet(selectedMonth) {
   }
 
   try {
+    logToSheet_('=== 請求シート更新開始 ===');
+    logToSheet_(`対象月: ${selectedMonth}`);
+
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const mainSheet = new MainSheet();
     const mainIndices = mainSheet.indices;
+
+    logToSheet_(`予定工数列のインデックス: ${mainIndices.PLANNED_HOURS}`);
 
     // メインシートの全データを取得
     const mainData = mainSheet.sheet.getRange(
@@ -40,14 +45,28 @@ function updateBillingSheet(selectedMonth) {
       return false;
     });
 
+    logToSheet_(`対象案件数: ${billingData.length}件`);
+
     // 請求シートに書き出すためのデータに整形
-    const dataForBillingSheet = billingData.map(row => {
+    const dataForBillingSheet = billingData.map((row, i) => {
+      const plannedHours = row[mainIndices.PLANNED_HOURS - 1];
+      const actualHours = row[mainIndices.ACTUAL_HOURS - 1];
+
+      // 予定工数が空の場合は実績工数を使用（フォールバック）
+      let finalPlannedHours = plannedHours;
+      if (!plannedHours && plannedHours !== 0) {
+        finalPlannedHours = actualHours;
+        const logMsg = `警告: 行${i + 1}の予定工数が空のため実績工数を使用 (管理No: ${row[mainIndices.MGMT_NO - 1]}, 実績: ${actualHours})`;
+        Logger.log(logMsg);
+        logToSheet_(logMsg);
+      }
+
       return [
         row[mainIndices.MGMT_NO - 1],       // 管理No.
         row[mainIndices.KIBAN - 1],          // 委託業務内容 (機番)
         row[mainIndices.SAGYOU_KUBUN - 1],   // 作業区分
-        row[mainIndices.PLANNED_HOURS - 1],  // 予定工数
-        row[mainIndices.ACTUAL_HOURS - 1]    // 実工数
+        finalPlannedHours || '',             // 予定工数 (空の場合は実績工数を使用)
+        actualHours || ''                    // 実工数
       ];
     });
     
@@ -64,9 +83,13 @@ function updateBillingSheet(selectedMonth) {
 
     if (dataForBillingSheet.length > 0) {
       billingSheet.getRange(2, 1, dataForBillingSheet.length, dataForBillingSheet[0].length).setValues(dataForBillingSheet);
+      logToSheet_(`請求シートに${dataForBillingSheet.length}件書き込み完了`);
+    } else {
+      logToSheet_('書き込むデータがありません');
     }
-    
+
     billingSheet.autoResizeColumns(1, headers.length);
+    logToSheet_('=== 請求シート更新完了 ===');
     ss.toast(`${year}年${month}月 分の請求シートを更新しました。`, '完了', 5);
     billingSheet.activate();
   } catch (error) {

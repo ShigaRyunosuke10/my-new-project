@@ -20,6 +20,8 @@ function onOpen(e) {
     .addItem('全資料フォルダ作成', 'bulkCreateMaterialFolders')
     .addItem('週次バックアップを作成', 'createWeeklyBackup')
     .addSeparator()
+    .addItem('工数シートのフィルタを有効化', 'enableFiltersOnAllInputSheets')
+    .addSeparator()
     .addItem('各種設定と書式を再適用', 'runAllManualMaintenance')
     .addSeparator()
     .addItem('スクリプトのキャッシュをクリア', 'clearScriptCache')
@@ -285,6 +287,49 @@ function colorizeSheet_(sheetObject) {
     backgroundColors.push(rowColors);
   });
   range.setBackgrounds(backgroundColors);
+}
+
+// =================================================================================
+// === フィルタ有効化機能 ===
+// =================================================================================
+
+/**
+ * すべての工数シートにフィルタを作成する
+ */
+function enableFiltersOnAllInputSheets() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let count = 0;
+
+  ss.getSheets().forEach(sheet => {
+    const sheetName = sheet.getName();
+    if (sheetName.startsWith(CONFIG.SHEETS.INPUT_PREFIX)) {
+      try {
+        const inputSheet = new InputSheet(sheetName.replace(CONFIG.SHEETS.INPUT_PREFIX, ''));
+        const lastRow = inputSheet.getLastRow();
+
+        // 既存のフィルタを削除
+        const existingFilter = sheet.getFilter();
+        if (existingFilter) {
+          existingFilter.remove();
+        }
+
+        // フィルタを作成（ヘッダー行から最終行まで）
+        if (lastRow >= inputSheet.startRow) {
+          sheet.getRange(
+            inputSheet.startRow - 1,
+            1,
+            lastRow - inputSheet.startRow + 2,
+            inputSheet.getLastColumn()
+          ).createFilter();
+          count++;
+        }
+      } catch (e) {
+        Logger.log(`シート「${sheetName}」のフィルタ作成中にエラー: ${e.message}`);
+      }
+    }
+  });
+
+  ss.toast(`${count}件の工数シートにフィルタを作成しました。`, '完了', 3);
 }
 
 // =================================================================================

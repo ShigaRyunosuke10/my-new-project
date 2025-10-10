@@ -25,7 +25,22 @@
 
 ## セッション開始時の必須手順
 
-### 1. Serenaメモリから状態を読み込み
+### 1. 参考資料の確認
+
+⚠️ **開発開始前に必ず確認**
+
+```bash
+# reference/ 内の資料を確認
+ls reference/
+
+# 必要に応じてPDF、Excel、画像等を読み込む
+Read reference/仕様書.pdf
+Read reference/ER図.png
+```
+
+詳細: [reference/README.md](reference/README.md)
+
+### 2. Serenaメモリから状態を読み込み
 
 ⚠️ **毎セッション開始時に必ず実施**
 
@@ -52,7 +67,7 @@ mcp__serena__read_memory
 
 詳細: [ai-rules/_project_template/SETUP_AND_MCP.md](ai-rules/_project_template/SETUP_AND_MCP.md)
 
-### 2. ブランチ確認
+### 3. ブランチ確認
 
 ```bash
 git fetch --quiet
@@ -220,6 +235,14 @@ git status
 ---
 
 ## ドキュメント構成
+
+### 参考資料（reference/）
+- 仕様書・設計書（PDF、Excel等）
+- サンプルデータ（CSV、JSON等）
+- ワイヤーフレーム・ER図（画像）
+- 外部API仕様書
+
+詳細: [reference/README.md](reference/README.md)
 
 ### 人間用ドキュメント（docs/）
 - `docs/DATABASE.md` - データベーススキーマ定義

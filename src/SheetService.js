@@ -214,3 +214,102 @@ function addNextMonthColumnsToAllInputSheets() {
   });
   SpreadsheetApp.getActiveSpreadsheet().toast('全工数シートのカレンダーを更新しました。');
 }
+
+// =================================================================================
+// === 月フィルタリング機能 ===
+// =================================================================================
+
+/**
+ * すべての工数シートで、先月・今月・来月の3ヶ月分のみ表示する
+ */
+function showRecentThreeMonths() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth(); // 0-based (0=1月, 11=12月)
+
+  // 先月、今月、来月の範囲を計算
+  const lastMonth = new Date(currentYear, currentMonth - 1, 1);
+  const nextMonthEnd = new Date(currentYear, currentMonth + 2, 0); // 来月の最終日
+
+  let count = 0;
+
+  ss.getSheets().forEach(sheet => {
+    if (sheet.getName().startsWith(CONFIG.SHEETS.INPUT_PREFIX)) {
+      try {
+        const lastCol = sheet.getLastColumn();
+        if (lastCol === 0) return;
+
+        // まず全列を表示
+        sheet.showColumns(1, lastCol);
+
+        // ヘッダー行の日付を取得
+        const dateHeaders = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+
+        // 非表示にする列を特定
+        const columnsToHide = [];
+        dateHeaders.forEach((header, i) => {
+          if (header instanceof Date) {
+            // 先月より前、または来月より後の日付は非表示
+            if (header < lastMonth || header > nextMonthEnd) {
+              columnsToHide.push(i + 1); // 列番号は1-based
+            }
+          }
+        });
+
+        // 連続した列をまとめて非表示
+        if (columnsToHide.length > 0) {
+          let rangeStart = columnsToHide[0];
+          let rangeEnd = columnsToHide[0];
+
+          for (let i = 1; i <= columnsToHide.length; i++) {
+            if (i < columnsToHide.length && columnsToHide[i] === rangeEnd + 1) {
+              rangeEnd = columnsToHide[i];
+            } else {
+              sheet.hideColumns(rangeStart, rangeEnd - rangeStart + 1);
+              if (i < columnsToHide.length) {
+                rangeStart = columnsToHide[i];
+                rangeEnd = columnsToHide[i];
+              }
+            }
+          }
+        }
+
+        count++;
+      } catch (e) {
+        Logger.log(`シート「${sheet.getName()}」の月フィルタリング中にエラー: ${e.message}`);
+      }
+    }
+  });
+
+  const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+  const lastMonthName = monthNames[lastMonth.getMonth()];
+  const thisMonthName = monthNames[currentMonth];
+  const nextMonthName = monthNames[new Date(currentYear, currentMonth + 1, 1).getMonth()];
+
+  ss.toast(`${count}件の工数シートを${lastMonthName}・${thisMonthName}・${nextMonthName}のみ表示しました。`, '完了', 3);
+}
+
+/**
+ * すべての工数シートの全ての月を表示する（非表示を解除）
+ */
+function showAllMonths() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let count = 0;
+
+  ss.getSheets().forEach(sheet => {
+    if (sheet.getName().startsWith(CONFIG.SHEETS.INPUT_PREFIX)) {
+      try {
+        const lastCol = sheet.getLastColumn();
+        if (lastCol > 0) {
+          sheet.showColumns(1, lastCol);
+          count++;
+        }
+      } catch (e) {
+        Logger.log(`シート「${sheet.getName()}」の列表示中にエラー: ${e.message}`);
+      }
+    }
+  });
+
+  ss.toast(`${count}件の工数シートの全ての月を表示しました。`, '完了', 3);
+}

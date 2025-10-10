@@ -21,6 +21,8 @@ function onOpen(e) {
     .addItem('週次バックアップを作成', 'createWeeklyBackup')
     .addSeparator()
     .addItem('工数シートのフィルタを有効化', 'enableFiltersOnAllInputSheets')
+    .addItem('工数シート: 先月・今月・来月のみ表示', 'showRecentThreeMonths')
+    .addItem('工数シート: 全ての月を表示', 'showAllMonths')
     .addSeparator()
     .addItem('各種設定と書式を再適用', 'runAllManualMaintenance')
     .addSeparator()

@@ -92,7 +92,10 @@ function getColorMapFromMaster(sheetName, keyColIndex, colorColIndex) {
   if (cached) {
     try {
       return new Map(JSON.parse(cached));
-    } catch (e) { /* ignore */ }
+    } catch (e) {
+      Logger.log(`キャッシュのパースエラー (${cacheKey}): ${e.message}`);
+      cache.remove(cacheKey);  // 破損したキャッシュを削除
+    }
   }
 
   const masterData = getMasterData(sheetName);

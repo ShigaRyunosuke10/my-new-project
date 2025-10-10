@@ -14,14 +14,21 @@ function syncMainToAllInputSheets() {
   if (mainSheet.getLastRow() >= mainSheet.startRow) {
     const range = mainSheet.sheet.getRange(mainSheet.startRow, 1, mainSheet.getLastRow() - mainSheet.startRow + 1, mainSheet.getLastColumn());
     const mainData = range.getValues();
+    const mainFormulas = range.getFormulas();
     let hasUpdate = false;
-    mainData.forEach(row => {
+    mainData.forEach((row, i) => {
       if (!row[mainIndices.PROGRESS - 1] && row[mainIndices.TANTOUSHA - 1]) {
         row[mainIndices.PROGRESS - 1] = "未着手";
         hasUpdate = true;
       }
     });
-    if (hasUpdate) range.setValues(mainData);
+    if (hasUpdate) {
+      // 数式を保護しながら書き込み
+      const finalData = mainData.map((row, i) =>
+        row.map((cell, j) => mainFormulas[i][j] || cell)
+      );
+      range.setValues(finalData);
+    }
   }
   
   const mainDataValues = mainSheet.sheet.getRange(mainSheet.startRow, 1, mainSheet.getLastRow() - mainSheet.startRow + 1, mainSheet.getLastColumn()).getValues();

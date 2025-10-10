@@ -93,9 +93,23 @@ function bulkCreateMaterialFolders() {
       }
     });
 
-    // 手順4: 変更があった場合のみ、シートに書き戻す
+    // 手順4: 変更があった場合のみ、シートに書き戻す（数式は個別に設定）
     if (modified) {
-      range.setValues(outputData);
+      for (let i = 0; i < outputData.length; i++) {
+        for (let j = 0; j < outputData[i].length; j++) {
+          const cellValue = outputData[i][j];
+          const cellRange = sheet.getRange(mainSheet.startRow + i, j + 1);
+
+          if (typeof cellValue === 'string' && cellValue.startsWith('=')) {
+            cellRange.setFormula(cellValue);
+          } else if (formulas[i][j]) {
+            // 元から数式だった場合は保持
+            cellRange.setFormula(formulas[i][j]);
+          } else {
+            cellRange.setValue(cellValue);
+          }
+        }
+      }
       ss.toast("資料フォルダの作成とリンク設定が完了しました。");
     } else {
       ss.toast("すべてのリンクは既に設定済みです。");

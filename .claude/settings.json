@@ -1,5 +1,274 @@
 {
-  "additionalWorkingDirectories": [
-    "C:\\Users\\shiga\\Desktop\\Dev\\nisseisp"
-  ]
+  "permissions": {
+    "allow": [
+      "// ========================================",
+      "// 横断的（共通）設定",
+      "// ========================================",
+      "// --- ファイル読み取り（共通） ---",
+      "Read:**/*.md",
+      "Read:**/*.json",
+      "Read:**/*.ts",
+      "Read:**/*.tsx",
+      "Read:**/*.py",
+      "Read:**/*.js",
+      "Read:**/*.jsx",
+
+      "// --- ファイル編集・作成（共通） ---",
+      "Edit:**/*.tsx",
+      "Edit:**/*.ts",
+      "Edit:**/*.py",
+      "Edit:**/*.md",
+      "Edit:**/*.json",
+      "Write:**/*.tsx",
+      "Write:**/*.ts",
+      "Write:**/*.py",
+      "Write:**/*.md",
+      "Write:**/*.json",
+
+      "// --- Git操作（共通） ---",
+      "Bash:git status",
+      "Bash:git diff*",
+      "Bash:git log*",
+      "Bash:git add*",
+      "Bash:git commit*",
+      "Bash:git checkout*",
+      "Bash:git pull*",
+      "Bash:git fetch*",
+      "Bash:git push origin*",
+      "Bash:git branch*",
+      "Bash:git merge*",
+      "Bash:git stash*",
+      "Bash:git restore*",
+      "Bash:git reset --soft*",
+      "// --- Git複合コマンド（&&連結） ---",
+      "Bash:git add -A && git commit*",
+      "Bash:git add . && git commit*",
+      "Bash:git commit* && git push*",
+
+      "// --- 基本コマンド（共通） ---",
+      "Bash:ls*",
+      "Bash:dir*",
+      "Bash:cd*",
+      "Bash:pwd",
+      "Bash:cat*",
+      "Bash:echo*",
+      "Bash:curl*",
+      "Bash:wget*",
+
+      "// ========================================",
+      "// プロジェクト固有設定",
+      "// ⚠️ プロジェクト名・技術スタックに応じて変更してください",
+      "// ========================================",
+      "// --- プロジェクトディレクトリ ---",
+      "Read:backend/**/*",
+      "Read:frontend/**/*",
+      "Read:docs/**/*",
+      "Read:ai-rules/**/*",
+      "Edit:frontend/src/**/*",
+      "Edit:backend/app/**/*",
+
+      "// --- Docker ---",
+      "Bash:docker-compose ps",
+      "Bash:docker-compose logs*",
+      "Bash:docker-compose up*",
+      "Bash:docker-compose restart*",
+      "Bash:docker-compose exec*",
+      "Bash:docker logs*",
+      "Bash:docker exec*",
+
+      "// --- Node.js（フロントエンド） ---",
+      "Bash:npm run build*",
+      "Bash:npm run dev*",
+      "Bash:npm install*",
+      "Bash:npm run test*",
+      "Bash:node*",
+      "Bash:cd * && npm run build*",
+      "Bash:cd * && npm run dev*",
+      "Bash:cd * && npm install*",
+
+      "// --- Python（バックエンド） ---",
+      "Bash:pip install*",
+      "Bash:python*",
+      "Bash:pytest*",
+
+      "// --- プロセス管理・システムコマンド ---",
+      "Bash:ps*",
+      "Bash:kill*",
+      "Bash:pkill*",
+      "Bash:tasklist*",
+      "Bash:taskkill*",
+      "Bash:wmic*",
+      "Bash:netstat*",
+      "Bash:timeout*",
+      "Bash:powershell*",
+      "Bash:findstr*",
+      "Bash:for*",
+      "Bash:while*",
+      "Bash:if*",
+      "Bash:do*",
+      "Bash:done*",
+      "Bash:then*",
+      "Bash:else*",
+      "Bash:fi*",
+      "Bash:break*",
+      "Bash:continue*",
+      "Bash:start*",
+      "Bash:docker restart*",
+      "Bash:docker ps*",
+      "Bash:sed*",
+
+      "// --- ファイル操作（破壊的以外） ---",
+      "Bash:mkdir*",
+      "Bash:cp*",
+      "Bash:mv*",
+      "Bash:touch*",
+      "Bash:head*",
+      "Bash:tail*",
+      "Bash:grep*",
+      "Bash:find*",
+      "Bash:which*",
+      "Bash:where*",
+
+      "// --- すべてのファイル読み取り ---",
+      "Read:**/*",
+
+      "// --- すべてのファイル編集（共通形式） ---",
+      "Edit:**/*.yaml",
+      "Edit:**/*.yml",
+      "Edit:**/*.sql",
+      "Edit:**/*.css",
+      "Edit:**/*.scss",
+      "Edit:**/*.html",
+      "Edit:**/*.xml",
+      "Edit:**/*.toml",
+      "Edit:**/*.ini",
+      "Edit:**/*.conf",
+
+      "// --- すべてのファイル作成 ---",
+      "Write:**/*.yaml",
+      "Write:**/*.yml",
+      "Write:**/*.sql",
+      "Write:**/*.css",
+      "Write:**/*.scss",
+      "Write:**/*.html",
+      "Write:**/*.xml",
+      "Write:**/*.js",
+      "Write:**/*.jsx",
+
+      "// --- ツール操作 ---",
+      "Glob:**",
+      "Grep:**",
+      "Task:*",
+      "Bash(git checkout:*)",
+      "Bash(npm run build:*)",
+      "Bash(timeout 10 npm run dev)",
+      "Bash(exit 0)",
+      "Bash(git add:*)",
+      "Bash(git restore:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(gh pr create:*)",
+      "Bash(git reset:*)",
+      "Bash(timeout:*)",
+      "Bash(curl:*)",
+      "Bash(/dev/null)",
+      "Bash(node:*)",
+      "Bash(npx playwright-core:*)",
+      "Bash(npx playwright test:*)",
+      "Bash(docker ps:*)",
+      "Bash(docker logs:*)",
+      "Bash(docker exec:*)",
+      "Bash(docker-compose restart:*)",
+      "Bash(pkill:*)",
+      "Bash(docker-compose:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker volume prune:*)"
+    ],
+    "deny": [
+      "// ========================================",
+      "// 横断的（共通）禁止設定",
+      "// ========================================",
+      "// --- 機密ファイル ---",
+      "Write:**/.env*",
+      "Write:**/.git/**",
+
+      "// --- 自動生成ファイル ---",
+      "Write:**/node_modules/**",
+      "Write:**/__pycache__/**",
+
+      "// --- 危険なコマンド ---",
+      "Bash:rm -rf*",
+      "Bash:git push --force*",
+      "Bash:git push -f*",
+      "Bash:git reset --hard*",
+      "Delete:**",
+
+      "// ========================================",
+      "// プロジェクト固有禁止設定",
+      "// ========================================",
+      "// --- Docker（破壊的操作） ---",
+      "Bash:docker-compose down*",
+      "Bash:docker system prune*",
+
+      "// --- パッケージ削除 ---",
+      "Bash:npm uninstall*",
+      "Bash:pip uninstall*"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "git fetch --quiet"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "mcp__github__create_pull_request",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -c \"Write-Host '✅ PR created! Run code-reviewer next.' -ForegroundColor Yellow\""
+          }
+        ]
+      },
+      {
+        "matcher": "Bash:git commit*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -c \"Write-Host '⚠️ E2E test done? Run e2e-tester if not!' -ForegroundColor Cyan\""
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "git add ."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -c \"[Console]::Beep(800, 200); [Console]::Beep(1000, 200); [Console]::Beep(1200, 300)\""
+          }
+        ]
+      }
+    ]
+  },
+  "env": {
+    "NODE_ENV": "development",
+    "PYTHONUNBUFFERED": "1"
+  },
+  "cleanupPeriodDays": 30
 }

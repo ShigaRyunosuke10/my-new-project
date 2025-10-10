@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  # Frontend service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "{{FRONTEND_PORT}}:{{FRONTEND_PORT}}"
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:{{BACKEND_PORT}}
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+
+  # Backend service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "{{BACKEND_PORT}}:{{BACKEND_PORT}}"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/{{PROJECT_NAME}}
+      - FRONTEND_URL=http://localhost:{{FRONTEND_PORT}}
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - db
+
+  # Database service
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB={{PROJECT_NAME}}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

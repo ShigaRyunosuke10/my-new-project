@@ -189,6 +189,11 @@ git status
 - **用途**: E2Eテスト実行
 - **テストユーザー**: {{TEST_USER_EMAIL}}
 
+#### Netlify
+- **用途**: プロジェクトのビルド・デプロイ・管理
+- **操作**: サイト作成、デプロイ、環境変数設定、アクセス制御
+- **認証**: Netlify Personal Access Token（{{NETLIFY_PAT}}）
+
 詳細: [ai-rules/_project_template/SETUP_AND_MCP.md](ai-rules/_project_template/SETUP_AND_MCP.md)
 
 ---

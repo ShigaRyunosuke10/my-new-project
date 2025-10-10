@@ -71,6 +71,9 @@ GITHUB_TOKEN=ghp_xxxxxxxxxxxx
 
 # Context7（MCPサーバー用）
 CONTEXT7_API_KEY=your-context7-api-key
+
+# Netlify（MCPサーバー用）
+NETLIFY_PERSONAL_ACCESS_TOKEN=your-netlify-pat
 ```
 
 ### 1.4 セットアップ手順
@@ -91,6 +94,7 @@ Model Context Protocol（MCP）は、Claude Codeが外部ツールやサービ�
 - **context7**: RAG/検索支援
 - **playwright**: E2Eテスト自動化
 - **github**: Issue/PR操作
+- **netlify**: サイトのビルド・デプロイ・管理
 - **desktop-commander**: ローカルPC操作
 - **supabase**: DB/認証/ストレージ連携
 
@@ -521,15 +525,83 @@ playwright で tests/e2e/login.spec.ts を実行、
 
 ---
 
-## 7. desktop-commander
+## 7. Netlify MCP
 
 ### 7.1 用途
+
+- **プロジェクトのビルド・デプロイ**: フロントエンドのNetlifyへのデプロイ
+- **サイト管理**: 新規サイト作成、既存サイト管理
+- **環境変数設定**: デプロイ時の環境変数・シークレット管理
+- **アクセス制御**: プロジェクトの保護設定
+- **フォーム管理**: フォーム送信の有効化・管理
+
+### 7.2 認証設定
+
+Netlify Personal Access Token（PAT）が必要です。
+
+#### PATの取得方法
+
+1. [Netlify Dashboard](https://app.netlify.com/) にログイン
+2. 左下のユーザーアイコン → **User settings** → **OAuth**
+3. **New access token** をクリック
+4. トークンをコピー
+5. `.mcp.json` の `NETLIFY_PERSONAL_ACCESS_TOKEN` に設定
+
+⚠️ **重要**: PATは機密情報です。`.gitignore`で除外されていることを確認してください。
+
+### 7.3 使用例
+
+#### サイトの作成
+
+```bash
+# AIに依頼
+> Netlifyに新しいサイトを作成してください。
+  サイト名: my-app
+  リポジトリ: {{GITHUB_OWNER}}/{{GITHUB_REPO}}
+```
+
+#### デプロイ
+
+```bash
+# AIに依頼
+> フロントエンドをNetlifyにデプロイしてください。
+  ビルドコマンド: npm run build
+  公開ディレクトリ: dist
+```
+
+#### 環境変数設定
+
+```bash
+# AIに依頼
+> Netlifyサイトに環境変数を追加してください。
+  変数名: API_URL
+  値: https://api.example.com
+```
+
+#### サイト情報確認
+
+```bash
+# AIに依頼
+> Netlifyサイトの情報を表示してください。
+```
+
+### 7.4 注意事項
+
+- **Node.js 22以上推奨**: Netlify MCP ServerはNode.js 22以上を推奨
+- **Netlify CLI**: `npm install -g netlify-cli` でインストール推奨
+- **認証エラー**: 認証エラーが発生する場合は、`netlify login` でログイン確認
+
+---
+
+## 8. desktop-commander
+
+### 8.1 用途
 
 - ローカルPCの操作自動化
 - 画面操作/アプリ起動/キーボード入力/プロセス操作など
 - 手動での環境準備や一発コマンドを代行
 
-### 7.2 使用例
+### 8.2 使用例
 
 #### ポート確認・プロセスkill
 
@@ -551,21 +623,21 @@ VS Code を開いて ai-rules/ISSUE_GUIDELINES.md を新規作成、
 下書きを貼り付けて保存
 ```
 
-### 7.3 注意事項
+### 8.3 注意事項
 
 - 誤操作リスクがあるため、操作範囲を明示（アプリ名/パス/許可ダイアログ対応）
 - 機密画面のスクショ取得は禁止
 
 ---
 
-## 8. supabase
+## 9. supabase
 
-### 8.1 用途
+### 9.1 用途
 
 - DB/認証/ストレージ連携
 - Supabaseプロジェクト（`{{SUPABASE_PROJECT_REF}}`）に対するスキーマ確認・SQL実行・ストレージ操作など
 
-### 8.2 使用例
+### 9.2 使用例
 
 #### スキーマ確認
 
@@ -586,7 +658,7 @@ users に plan 列（enum: free/pro）を追加するマイグレーション案
 ストレージに playwright-report/ を作成して最新レポートをアップロード
 ```
 
-### 8.3 注意事項
+### 9.3 注意事項
 
 - 本番データへの影響に注意（dry-run や確認プロンプトを挟む）
 - 秘密鍵/サービスロールキーは厳重管理（.env & .gitignore）

@@ -36,12 +36,14 @@ function getJapaneseHolidays(year) {
   }
 }
 
-function isHoliday(date, holidaySet) {
-  if (!isValidDate(date)) return false;
-  const dayOfWeek = date.getDay();
-  if (dayOfWeek === 0 || dayOfWeek === 6) return true;
-  return holidaySet.has(formatDateForComparison(date));
-}
+// isHoliday() - 削除（未使用のため）
+// 将来的に必要な場合は以下の実装を参照：
+// function isHoliday(date, holidaySet) {
+//   if (!isValidDate(date)) return false;
+//   const dayOfWeek = date.getDay();
+//   if (dayOfWeek === 0 || dayOfWeek === 6) return true;
+//   return holidaySet.has(formatDateForComparison(date));
+// }
 
 function isValidDate(value) {
   return value instanceof Date && !isNaN(value.getTime());
@@ -142,14 +144,15 @@ function getStartDateTriggerStatuses() {
 }
 
 
-function getTantoushaNameByEmail(email) {
-  if (!email) return null;
-  const userEmail = email.trim();
-  const masterData = getMasterData(CONFIG.SHEETS.TANTOUSHA_MASTER, 2);
-  const user = masterData.find(row => String(row[1]).trim() === userEmail);
-  return user ?
-  user[0] : null;
-}
+// getTantoushaNameByEmail() - 削除（未使用のため）
+// 将来的に必要な場合は以下の実装を参照：
+// function getTantoushaNameByEmail(email) {
+//   if (!email) return null;
+//   const userEmail = email.trim();
+//   const masterData = getMasterData(CONFIG.SHEETS.TANTOUSHA_MASTER, 2);
+//   const user = masterData.find(row => String(row[1]).trim() === userEmail);
+//   return user ? user[0] : null;
+// }
 
 function logWithTimestamp(message) {
   const timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), DATE_FORMATS.DATETIME);

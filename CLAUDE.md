@@ -1,8 +1,9 @@
-# Claude Code Configuration (my-new-project)
+# Claude Code Configuration (工数管理スプレッドシート)
 
 このファイルは、Claude Codeがこのプロジェクトで作業する際の基本設定とワークフローを定義します。
 
 **プロジェクト名**: my-new-project
+**プロジェクトタイプ**: Google Apps Script
 **最終更新**: 2025-10-10
 
 ---
@@ -11,15 +12,16 @@
 
 ### 基本情報
 - **リポジトリ**: ShigaRyunosuke10/my-new-project
-- **フロントエンド**: ポート3001
-- **バックエンド**: ポート8001
-- **テストユーザー**: test-user@example.com
+- **Apps Script ID**: 1_gXuHWvCfQg9vRrjo87nYPUkM_hejJbXKJNfDMrQvjPcsg9xNukFsnIW
+- **スプレッドシート**: Google スプレッドシート上で動作
+- **目的**: 工数管理・プロジェクト管理の自動化
 
 ### 技術スタック
-- **フロントエンド**: [記載してください]
-- **バックエンド**: [記載してください]
-- **データベース**: [記載してください]
-- **テスト**: Playwright (E2E)
+- **実行環境**: Google Apps Script
+- **開発ツール**: clasp (Command Line Apps Script Projects)
+- **言語**: JavaScript (Google Apps Script API)
+- **データストア**: Google スプレッドシート
+- **外部連携**: Google Drive API, PDF解析
 
 ---
 
@@ -30,47 +32,23 @@
 ⚠️ **開発開始前に必ず確認**
 
 ```bash
-# reference/ 内の資料を確認
+# reference/ 内のバックアップコードを確認
 ls reference/
 
-# 必要に応じてPDF、Excel、画像等を読み込む
-Read reference/仕様書.pdf
-Read reference/ER図.png
+# 既存コードを確認
+Read reference/code*.txt
 ```
 
-詳細: [reference/README.md](reference/README.md)
-
-### 2. Serenaメモリから状態を読み込み
-
-⚠️ **毎セッション開始時に必ず実施**
+### 2. claspでプロジェクトと同期
 
 ```bash
-# 1. プロジェクトをアクティベート
-mcp__serena__activate_project
-  project: "{{PROJECT_NAME}}"
-
-# 2. 利用可能なメモリを確認
-mcp__serena__list_memories
-
-# 3. 現在の優先度を把握
-mcp__serena__read_memory
-  memory_file_name: "current_issues_and_priorities.md"
-
-# 4. セッション引き継ぎ情報を確認
-mcp__serena__read_memory
-  memory_file_name: "session_handover.md"
-
-# 5. フェーズ進捗を確認（フェーズ管理時）
-mcp__serena__read_memory
-  memory_file_name: "phase_progress.md"
+# Apps Scriptから最新コードを取得
+clasp pull
 ```
 
-詳細: [ai-rules/_project_template/SETUP_AND_MCP.md](ai-rules/_project_template/SETUP_AND_MCP.md)
-
-### 3. ブランチ確認
+### 3. Git状態を確認
 
 ```bash
-git fetch --quiet
 git status
 ```
 
@@ -78,87 +56,33 @@ git status
 
 ## 開発ワークフロー
 
-詳細: [ai-rules/_project_template/WORKFLOW.md](ai-rules/_project_template/WORKFLOW.md)
-
-### 全体フロー
+### 全体フロー（Google Apps Script特化版）
 
 ```
 [セッション開始]
     ↓
-[Serenaメモリ読み込み] ← 必須
+[clasp pull] ← Apps Scriptから最新コード取得
     ↓
-[ブランチ作成] (feat-*, fix-*, docs-*, refactor-*)
+[静的解析] ← コード品質チェック
     ↓
-[実装・修正]
+[バグ・改善点の特定]
     ↓
-[e2e-tester サブエージェント実行] ← 必須（コミット前）
-    ├─[成功] → [コミット]
-    └─[失敗] → [修正] → ループ
+[修正実装]
     ↓
-[push]
+[clasp push] ← Apps Scriptへデプロイ
     ↓
-[PR作成]
+[スプレッドシートで手動テスト]
     ↓
-[code-reviewer サブエージェント レビュー] ← 必須
-    ↓
-[レビュー対応]
-    ├─[マージ可] → [マージ] → [docs-updater サブエージェント] ← 必須
-    └─[要修正] → [修正] → 再レビュー
+[Git commit & push]
 ```
 
----
+### 注意事項
 
-## サブエージェント
-
-### code-reviewer
-
-**用途**: PR作成直後の必須レビュー
-
-```
-> code-reviewerサブエージェントを使用してPR #[番号]をレビューしてください
-```
-
-**実行内容**:
-- コード品質チェック
-- セキュリティ確認
-- パフォーマンス検証
-- 命名規則準拠確認
-- Critical/Major/Minor分類での問題報告
-
-詳細: [.claude/agents/code-reviewer.md](.claude/agents/code-reviewer.md)
-
-### e2e-tester
-
-**用途**: コミット前の必須E2Eテスト
-
-```
-> e2e-tester サブエージェントを使用してE2Eテストを実施
-```
-
-**実行内容**:
-- 変更ファイルからテスト対象を推測
-- 正常系・異常系・エッジケースのテストシナリオ作成
-- Playwright MCPでテスト実行
-- スクリーンショット保存
-- テスト結果レポート出力
-
-詳細: [.claude/agents/e2e-tester.md](.claude/agents/e2e-tester.md)
-
-### docs-updater
-
-**用途**: マージ後の必須ドキュメント更新
-
-```
-> docs-updaterサブエージェントを使用してドキュメント更新を実施
-```
-
-**実行内容**:
-- docs/ の人間用ドキュメント更新
-- Serenaメモリの詳細仕様更新
-- 一貫性確認
-- 自動コミット・プッシュ
-
-詳細: [.claude/agents/docs-updater.md](.claude/agents/docs-updater.md)
+#### Google Apps Script特有の制約
+- ❌ **E2Eテスト自動化不可**: Playwrightは使用しない（スプレッドシート操作は手動テスト）
+- ❌ **PR・レビュープロセス簡略化**: 小規模プロジェクトのためmainブランチ直接コミット可
+- ✅ **静的解析重視**: 実行前にコード品質を確認
+- ✅ **clasp pushで即座にデプロイ**: Apps Scriptに直接反映
 
 ---
 
@@ -166,35 +90,22 @@ git status
 
 ### 有効なMCPサーバー
 
-#### Context7
-- **用途**: 最新ライブラリ仕様の取得
-- **使用例**: `@context7 react 19`, `@context7 fastapi`
+#### Context7（使用可能）
+- **用途**: Google Apps Script APIの最新仕様確認
+- **使用例**: `@context7 google apps script LockService`
 
-#### GitHub
-- **用途**: リポジトリ操作
-- **リポジトリ**: {{GITHUB_OWNER}}/{{GITHUB_REPO}}
-- **操作**: PR作成、Issue管理、マージ
+#### GitHub（使用可能）
+- **用途**: リポジトリへのコミット・プッシュ
+- **リポジトリ**: ShigaRyunosuke10/my-new-project
 
-#### Serena
-- **用途**: コードベース管理とメモリ
-- **プロジェクト**: {{PROJECT_NAME}}
-- **メモリファイル**:
-  - `current_issues_and_priorities.md` - Issue・優先度
-  - `session_handover.md` - セッション引き継ぎ
-  - `phase_progress.md` - フェーズ進捗（フェーズ管理時）
-  - `database_specifications.md` - DB詳細仕様
-  - `api_specifications.md` - API詳細仕様
+#### Serena（不使用）
+- **理由**: 小規模プロジェクトのためメモリ管理不要
 
-#### Playwright
-- **用途**: E2Eテスト実行
-- **テストユーザー**: {{TEST_USER_EMAIL}}
+#### Playwright（不使用）
+- **理由**: スプレッドシート操作の自動テスト不可
 
-#### Netlify
-- **用途**: プロジェクトのビルド・デプロイ・管理
-- **操作**: サイト作成、デプロイ、環境変数設定、アクセス制御
-- **認証**: Netlify Personal Access Token（{{NETLIFY_PAT}}）
-
-詳細: [ai-rules/_project_template/SETUP_AND_MCP.md](ai-rules/_project_template/SETUP_AND_MCP.md)
+#### Netlify（不使用）
+- **理由**: Webアプリケーションではない
 
 ---
 
@@ -203,65 +114,67 @@ git status
 ### 必須事項
 
 #### セッション開始時
-- ✅ Serenaメモリから状態を読み込む
-- ✅ フェーズ・仕様を確認してから作業開始
+- ✅ `clasp pull` で最新コードを取得
+- ✅ reference/ のバックアップコードを確認
 - ✅ 不明点はユーザーに質問
 
 #### 実装時
-- ✅ 専用ブランチで作業（mainブランチ直接作業禁止）
-- ✅ [命名規則](ai-rules/common/NAMING_CONVENTIONS.md) に準拠
+- ✅ 静的解析でバグを事前検出
+- ✅ JSDoc コメントで関数を文書化
 - ✅ 影響範囲を確認してから修正
+- ✅ プライベート関数は `_` サフィックスを使用
+
+#### デプロイ前
+- ✅ デバッグコード・不要コメントを削除
+- ✅ 構文エラーがないことを確認
+- ✅ `clasp push` でApps Scriptへデプロイ
 
 #### コミット前
-- ✅ e2e-tester サブエージェントでE2Eテスト実施
-- ✅ すべてのテストがパスすることを確認
-- ✅ デバッグコード・不要コメントを削除
+- ✅ 変更内容をBUGFIX_REPORT.mdに記録
+- ✅ コミットメッセージは [ai-rules/common/COMMIT_GUIDELINES.md](ai-rules/common/COMMIT_GUIDELINES.md) に準拠
 
-#### PR作成後
-- ✅ code-reviewer サブエージェント レビューを依頼
-- ✅ Critical問題は必ず修正してからマージ
-- ✅ レビュー対応は即座に実施（Issue化は例外的）
-
-#### マージ後
-- ✅ docs-updater サブエージェントでドキュメント更新
-- ✅ docs/ と Serenaメモリの両方を更新
-- ✅ PR作成→レビュー→マージ→ドキュメント更新を1セットで完了
+#### コミット後
+- ✅ GitHubへプッシュ
 
 ### 禁止事項
 
-- ❌ mainブランチへの直接作業
-- ❌ テスト未実施でのコミット
-- ❌ Critical問題が残ったままのマージ
-- ❌ ドキュメント更新なしでの作業完了
 - ❌ デバッグコード・不要コメントのコミット
 - ❌ git config の変更
 - ❌ 破壊的gitコマンド（push --force, hard reset等、ユーザー明示指示除く）
 
 ---
 
-## ドキュメント構成
+## ファイル構成
 
-### 参考資料（reference/）
-- 仕様書・設計書（PDF、Excel等）
-- サンプルデータ（CSV、JSON等）
-- ワイヤーフレーム・ER図（画像）
-- 外部API仕様書
-
-詳細: [reference/README.md](reference/README.md)
-
-### 人間用ドキュメント（docs/）
-- `docs/DATABASE.md` - データベーススキーマ定義
-- `docs/API.md` - API エンドポイント仕様
-- `docs/SETUP.md` - 環境構築手順
-- `docs/PHASES.md` - フェーズ管理（フェーズ管理時）
-
-### AI用詳細仕様（Serenaメモリ）
-- `database_specifications.md` - DB詳細仕様
-- `api_specifications.md` - API詳細仕様
-- `phase_progress.md` - フェーズ進捗
-- `current_issues_and_priorities.md` - Issue・優先度
-
-詳細: [ai-rules/common/DOCUMENTATION_GUIDE.md](ai-rules/common/DOCUMENTATION_GUIDE.md)
+```
+my-new-project/
+├── src/                          # Apps Scriptソースコード
+│   ├── Code.js                   # メインロジック（onEditトリガー）
+│   ├── Config.js                 # 設定定義
+│   ├── Utils.js                  # ユーティリティ関数
+│   ├── DataSync.js               # データ同期処理
+│   ├── DriveIntegration.js       # Google Drive連携
+│   ├── PdfProcessing.js          # PDF解析
+│   ├── SheetService.js           # シート操作
+│   ├── Billing.js                # 請求処理
+│   ├── Sidebar.html              # サイドバーUI
+│   ├── BillingSidebar.html       # 請求サイドバーUI
+│   ├── ImportFileDialog.html     # ファイルインポートUI
+│   └── appsscript.json           # Apps Script設定
+├── reference/                     # 参考資料・バックアップ
+│   ├── code1.txt ~ code11.txt    # 既存コードバックアップ
+│   └── README.md                 # 参考資料の説明
+├── ai-rules/                     # AI用ガイドライン
+│   └── common/                   # 汎用ルール
+│       ├── COMMIT_GUIDELINES.md  # コミットメッセージ規約
+│       ├── NAMING_CONVENTIONS.md # 命名規則
+│       └── SESSION_MANAGEMENT.md # セッション管理
+├── .clasp.json                   # clasp設定
+├── .gitignore
+├── CLAUDE.md                     # このファイル
+├── BUGFIX_REPORT.md              # バグ修正履歴
+└── README.md                     # プロジェクト説明
+```
 
 ---
 
@@ -284,52 +197,26 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 - `fix`: バグ修正
 - `docs`: ドキュメントのみの変更
 - `refactor`: バグ修正や機能追加を含まないコードの変更
-- `test`: テストの追加・修正
 - `chore`: ビルドプロセスやツールの変更
-
----
-
-## セッション管理
-
-⚠️ AI側から適切なタイミングでセッション切り替えを提案します
-
-詳細: [ai-rules/common/SESSION_MANAGEMENT.md](ai-rules/common/SESSION_MANAGEMENT.md)
-
-### セッション切り替えタイミング
-- トークン使用量が予算の70%を超えた場合
-- 大きなマイルストーン完了時
-- コンテキストが複雑になった場合
-
-### セッション終了時の手順
-1. Serenaメモリを更新（session_handover.md等）
-2. 完了内容と次のタスクを記録
-3. ユーザーに切り替えを提案
 
 ---
 
 ## AI用ガイドライン
 
-### プロジェクト固有（ai-rules/_project_template/）
-- [WORKFLOW.md](ai-rules/_project_template/WORKFLOW.md) - 開発ワークフロー
-- [SETUP_AND_MCP.md](ai-rules/_project_template/SETUP_AND_MCP.md) - 環境構築・MCP設定
-- [TESTING.md](ai-rules/_project_template/TESTING.md) - テストガイドライン
-- [PR_AND_REVIEW.md](ai-rules/_project_template/PR_AND_REVIEW.md) - PR・レビュープロセス
-- [ISSUE_GUIDELINES.md](ai-rules/_project_template/ISSUE_GUIDELINES.md) - Issue管理
-- [DOCUMENTATION_GUIDE.md](ai-rules/_project_template/DOCUMENTATION_GUIDE.md) - ドキュメント管理
-
 ### 汎用（ai-rules/common/）
-- [WORKFLOW.md](ai-rules/common/WORKFLOW.md) - 汎用ワークフロー
-- [SESSION_MANAGEMENT.md](ai-rules/common/SESSION_MANAGEMENT.md) - セッション管理
-- [PHASE_MANAGEMENT.md](ai-rules/common/PHASE_MANAGEMENT.md) - フェーズ管理
-- [DOCUMENTATION_GUIDE.md](ai-rules/common/DOCUMENTATION_GUIDE.md) - ドキュメント管理
 - [COMMIT_GUIDELINES.md](ai-rules/common/COMMIT_GUIDELINES.md) - コミットメッセージ
 - [NAMING_CONVENTIONS.md](ai-rules/common/NAMING_CONVENTIONS.md) - 命名規則
-- [ISSUE_GUIDELINES.md](ai-rules/common/ISSUE_GUIDELINES.md) - Issue管理
-- [PR_PROCESS.md](ai-rules/common/PR_PROCESS.md) - PRプロセス
-- [SETTINGS_JSON_GUIDE.md](ai-rules/common/SETTINGS_JSON_GUIDE.md) - settings.json設定
+- [SESSION_MANAGEMENT.md](ai-rules/common/SESSION_MANAGEMENT.md) - セッション管理
+
+### 不使用（このプロジェクトでは該当しない）
+- ~~WORKFLOW.md~~ - Google Apps Script独自フロー使用
+- ~~TESTING.md~~ - E2Eテスト自動化不可
+- ~~PR_PROCESS.md~~ - PR・レビュープロセス簡略化
+- ~~PHASE_MANAGEMENT.md~~ - フェーズ管理不要
+- ~~DOCUMENTATION_GUIDE.md~~ - Serenaメモリ不使用
 
 ---
 
 ## 最終更新履歴
 
-- 2025-10-10: 初期作成
+- 2025-10-10: Google Apps Script用に設定を調整

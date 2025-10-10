@@ -28,78 +28,151 @@ function onOpen(e) {
 }
 
 /**
- * onEdit: 編集イベントを処理する司令塔
+ * onEdit: 編集イベントを処理する司令塔（リファクタリング版）
  */
 function onEdit(e) {
   if (!e || !e.source || !e.range) return;
+
   const lock = LockService.getScriptLock();
+  if (!acquireLock_(lock)) return;
+
   try {
-    lock.waitLock(5000);  // 30秒→5秒に短縮（複数ユーザー同時編集時の応答性向上） 
-  } catch (err) {
-    Logger.log('ロックの待機中にタイムアウトしました。');
-    return;
-  }
-  
-  const ss = e.source;
-  try {
-    const sheet = e.range.getSheet();
-    const sheetName = sheet.getName();
-
-    if (sheetName === CONFIG.SHEETS.MAIN) {
-      const mainSheet = new MainSheet();
-      const editedCol = e.range.getColumn();
-      const editedRow = e.range.getRow();
-
-      // indicesの存在確認（ヘッダー変更によるエラー防止）
-      if (!mainSheet.indices || !mainSheet.indices.KIBAN || !mainSheet.indices.MODEL) {
-        Logger.log('列インデックスが取得できません。ヘッダー行を確認してください。');
-        return;
-      }
-
-      // 編集された行のデータを取得
-      const editedRowValues = mainSheet.getSheet().getRange(editedRow, 1, 1, mainSheet.getSheet().getLastColumn()).getValues()[0];
-      const kiban = editedRowValues[mainSheet.indices.KIBAN - 1];
-      const model = editedRowValues[mainSheet.indices.MODEL - 1];
-
-      if (editedCol === mainSheet.indices.TANTOUSHA) {
-        ss.toast('担当者の変更を検出しました。関連シートを同期します...', '同期中', 5);
-        syncMainToAllInputSheets();
-        colorizeAllSheets();
-      } 
-      // 「仕掛かり日」が入力された時の処理
-      else if (editedCol === mainSheet.indices.START_DATE && editedRow >= mainSheet.startRow) {
-        // 日付の妥当性チェックを追加
-        const startDateValue = editedRowValues[mainSheet.indices.START_DATE - 1];
-        if (kiban && model && startDateValue && isValidDate(startDateValue)) {
-          ss.toast('管理表に機種・製番を書き込みます...', '処理中', 3);
-          updateManagementSheet({ kiban: kiban, model: model });
-        } else if (e.value && !isValidDate(startDateValue)) {
-          Logger.log(`無効な日付が入力されました: ${e.value}`);
-        }
-        colorizeAllSheets();
-      } 
-      // 「完了日」が入力された時の処理
-      else if (editedCol === mainSheet.indices.COMPLETE_DATE && editedRow >= mainSheet.startRow) {
-        const completionDate = e.value;
-        if (kiban && completionDate) {
-          ss.toast('完了日を顧客用管理表に同期します...', '同期中', 3);
-          updateManagementSheet({ kiban: kiban, completionDate: new Date(completionDate) });
-        }
-        colorizeAllSheets();
-      } else {
-        colorizeAllSheets();
-      }
-
-    } else if (sheetName.startsWith(CONFIG.SHEETS.INPUT_PREFIX)) {
-      syncInputToMain(sheetName, e.range);
-      colorizeAllSheets();
-    }
+    handleEditEvent_(e);
   } catch (error) {
-    Logger.log(error.stack);
-    ss.toast(`エラーが発生しました: ${error.message}`, "エラー", 10);
+    logError_(error, '編集イベント処理');
+    e.source.toast(`エラーが発生しました: ${error.message}`, 'エラー', 10);
   } finally {
     lock.releaseLock();
   }
+}
+
+/**
+ * ロックを取得する
+ * @private
+ */
+function acquireLock_(lock) {
+  try {
+    lock.waitLock(5000);
+    return true;
+  } catch (err) {
+    Logger.log('ロックの待機中にタイムアウトしました。');
+    return false;
+  }
+}
+
+/**
+ * 編集イベントを処理する
+ * @private
+ */
+function handleEditEvent_(e) {
+  const sheet = e.range.getSheet();
+  const sheetName = sheet.getName();
+
+  if (sheetName === CONFIG.SHEETS.MAIN) {
+    handleMainSheetEdit_(e);
+  } else if (sheetName.startsWith(CONFIG.SHEETS.INPUT_PREFIX)) {
+    handleInputSheetEdit_(sheetName, e.range);
+  }
+}
+
+/**
+ * メインシートの編集を処理する
+ * @private
+ */
+function handleMainSheetEdit_(e) {
+  const mainSheet = new MainSheet();
+
+  if (!validateMainSheetIndices_(mainSheet)) return;
+
+  const editedCol = e.range.getColumn();
+  const editedRow = e.range.getRow();
+  const editedRowValues = mainSheet.getSheet()
+    .getRange(editedRow, 1, 1, mainSheet.getSheet().getLastColumn())
+    .getValues()[0];
+
+  const kiban = editedRowValues[mainSheet.indices.KIBAN - 1];
+  const model = editedRowValues[mainSheet.indices.MODEL - 1];
+
+  if (editedCol === mainSheet.indices.TANTOUSHA) {
+    handleTantoushaEdit_(e.source);
+  } else if (editedCol === mainSheet.indices.START_DATE && editedRow >= mainSheet.startRow) {
+    handleStartDateEdit_(e, mainSheet, editedRow, editedRowValues, kiban, model);
+  } else if (editedCol === mainSheet.indices.COMPLETE_DATE && editedRow >= mainSheet.startRow) {
+    handleCompleteDateEdit_(e, kiban);
+  } else {
+    colorizeAllSheets();
+  }
+}
+
+/**
+ * 列インデックスを検証する
+ * @private
+ */
+function validateMainSheetIndices_(mainSheet) {
+  if (!mainSheet.indices || !mainSheet.indices.KIBAN || !mainSheet.indices.MODEL) {
+    Logger.log('列インデックスが取得できません。ヘッダー行を確認してください。');
+    return false;
+  }
+  return true;
+}
+
+/**
+ * 担当者列の編集を処理する
+ * @private
+ */
+function handleTantoushaEdit_(ss) {
+  ss.toast('担当者の変更を検出しました。関連シートを同期します...', '同期中', 5);
+  syncMainToAllInputSheets();
+  colorizeAllSheets();
+}
+
+/**
+ * 仕掛かり日列の編集を処理する
+ * @private
+ */
+function handleStartDateEdit_(e, mainSheet, _editedRow, editedRowValues, kiban, model) {
+  const startDateValue = editedRowValues[mainSheet.indices.START_DATE - 1];
+
+  if (kiban && model && startDateValue && isValidDate(startDateValue)) {
+    e.source.toast('管理表に機種・製番を書き込みます...', '処理中', 3);
+    updateManagementSheet({ kiban: kiban, model: model });
+  } else if (e.value && !isValidDate(startDateValue)) {
+    Logger.log(`無効な日付が入力されました: ${e.value}`);
+  }
+
+  colorizeAllSheets();
+}
+
+/**
+ * 完了日列の編集を処理する
+ * @private
+ */
+function handleCompleteDateEdit_(e, kiban) {
+  const completionDate = e.value;
+
+  if (kiban && completionDate) {
+    e.source.toast('完了日を顧客用管理表に同期します...', '同期中', 3);
+    updateManagementSheet({ kiban: kiban, completionDate: new Date(completionDate) });
+  }
+
+  colorizeAllSheets();
+}
+
+/**
+ * 工数シートの編集を処理する
+ * @private
+ */
+function handleInputSheetEdit_(sheetName, range) {
+  syncInputToMain(sheetName, range);
+  colorizeAllSheets();
+}
+
+/**
+ * エラーをログに記録する
+ * @private
+ */
+function logError_(error, context) {
+  Logger.log(`[${context}] ${error.stack || error.message}`);
 }
 
 /**
@@ -291,9 +364,12 @@ function colorizeSheet_(sheetObject) {
 // =================================================================================
 // === 既存のヘルパー関数群（変更なし） ===
 // =================================================================================
-function periodicMaintenance() {
-  setupAllDataValidations();
-}
+
+// periodicMaintenance() - コメントアウト（トリガー未設定のため）
+// トリガーを設定する場合は、以下のコメントを外してください：
+// function periodicMaintenance() {
+//   setupAllDataValidations();
+// }
 
 function runAllManualMaintenance() {
   SpreadsheetApp.getActiveSpreadsheet().toast('各種設定と書式を適用中...', '処理中', 3);

@@ -78,6 +78,8 @@ function getColor(colorMap, key, defaultValue = CONFIG.COLORS.DEFAULT_BACKGROUND
 }
 
 const DATE_FORMATS = {
-  DATE_ONLY: "yyyy/MM/dd", DATETIME: "yyyy-MM-dd HH:mm:ss",
-  MONTH_DAY: "M/d", BACKUP_TIMESTAMP: "yyyy-MM-dd_HH-mm"
+  DATE_ONLY: "yyyy-MM-dd",
+  DATETIME: "yyyy-MM-dd HH:mm:ss",
+  MONTH_DAY: "MM-dd",
+  BACKUP_TIMESTAMP: "yyyy-MM-dd_HH-mm"
 };

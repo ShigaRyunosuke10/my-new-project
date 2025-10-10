@@ -181,14 +181,12 @@ function clearScriptCache() {
     keysToRemove.push('completion_trigger_statuses');
     keysToRemove.push('startdate_trigger_statuses');
     keysToRemove.push(`holidays_${new Date().getFullYear()}`);
-    const masterSheets = [
-        CONFIG.SHEETS.SHINCHOKU_MASTER,
-        CONFIG.SHEETS.TANTOUSHA_MASTER,
-        CONFIG.SHEETS.SAGYOU_KUBUN_MASTER,
-        CONFIG.SHEETS.TOIAWASE_MASTER
-    ];
-    masterSheets.forEach(sheetName => {
+
+    // CONFIG.SHEETSから動的にマスタシート名を取得
+    Object.values(CONFIG.SHEETS).forEach(sheetName => {
+      if (sheetName.includes('マスタ')) {
         keysToRemove.push(`color_map_${sheetName}`);
+      }
     });
 
     // 3. 収集したキーを全て使ってキャッシュを削除

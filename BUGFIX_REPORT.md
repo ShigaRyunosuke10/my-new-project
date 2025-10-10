@@ -152,15 +152,65 @@ catch (e) {
 
 ---
 
-## 🟢 Minor バグ - 未修正（影響軽微）
+## 🟢 Minor バグ - 5件修正
 
-以下のバグは影響が軽微なため、今回は未修正：
+### 8. ✅ 日付フォーマットの不統一修正
+**ファイル**: `Config.js` 行80-85
+**問題**: 日付フォーマットが混在（`yyyy/MM/dd`と`yyyy-MM-dd`）
+**影響**: データの一貫性に欠ける
+**修正内容**:
+```javascript
+// 修正前
+DATE_ONLY: "yyyy/MM/dd", MONTH_DAY: "M/d"
 
-8. 日付フォーマットの不統一（Config.js）
-9. 過剰なtry-catch（Code.js）
-10. 行削除の非効率性（DataSync.js）
-11. キャッシュクリアのハードコーディング（Utils.js）
-12-13. パフォーマンス問題（データ取得の重複、全シート色付けの頻度）
+// 修正後（ISO 8601形式に統一）
+DATE_ONLY: "yyyy-MM-dd", MONTH_DAY: "MM-dd"
+```
+
+### 9. ✅ 過剰なtry-catch削減
+**ファイル**: `Code.js` onEdit()関数
+**問題**: 関数全体を覆う巨大なtry-catchブロック
+**影響**: エラー箇所の特定が困難
+**修正内容**: onEdit()リファクタリングで解決済み（関数分割により自然に解消）
+
+### 10. ✅ 行削除の非効率性改善
+**ファイル**: `DataSync.js` 行89-93
+**問題**: reverse()の不要な使用、ソートなし削除
+**影響**: 軽微なパフォーマンス低下
+**修正内容**:
+```javascript
+// 修正前
+rowsToDelete.reverse().forEach(rowNum => inputSheet.sheet.deleteRow(rowNum));
+
+// 修正後（明示的な降順ソート）
+rowsToDelete.sort((a, b) => b - a);
+rowsToDelete.forEach(rowNum => inputSheet.sheet.deleteRow(rowNum));
+```
+
+### 11. ✅ キャッシュクリアのハードコーディング解消
+**ファイル**: `Utils.js` 行185-190
+**問題**: マスタシート名が配列にハードコーディング
+**影響**: 新しいマスタシート追加時に修正漏れの可能性
+**修正内容**:
+```javascript
+// 修正前
+const masterSheets = [
+  CONFIG.SHEETS.SHINCHOKU_MASTER,
+  CONFIG.SHEETS.TANTOUSHA_MASTER,
+  // ...
+];
+
+// 修正後（CONFIG.SHEETSから動的に取得）
+Object.values(CONFIG.SHEETS).forEach(sheetName => {
+  if (sheetName.includes('マスタ')) {
+    keysToRemove.push(`color_map_${sheetName}`);
+  }
+});
+```
+
+### 12-13. ⏳ パフォーマンス問題（未修正）
+**箇所**: データ取得の重複、全シート色付けの頻度
+**理由**: 大規模なリファクタリングが必要、現時点で顕著な問題なし
 
 ---
 
@@ -168,11 +218,11 @@ catch (e) {
 
 - **Critical修正**: 4件 ✅
 - **Major修正**: 2件 ✅
-- **Minor修正**: 1件 ✅
-- **Minor未修正**: 5件 ⏳
-- **修正ファイル数**: 5ファイル (Code.js, DataSync.js, PdfProcessing.js, DriveIntegration.js, Utils.js)
-- **追加コード行数**: 約25行
-- **削除コード行数**: 約10行
+- **Minor修正**: 5件 ✅
+- **Minor未修正**: 1件 ⏳（パフォーマンス最適化）
+- **修正ファイル数**: 6ファイル (Code.js, Config.js, DataSync.js, PdfProcessing.js, DriveIntegration.js, Utils.js)
+- **追加コード行数**: 約35行
+- **削除コード行数**: 約15行
 
 ---
 

@@ -87,7 +87,9 @@ function syncMainToAllInputSheets() {
 
       // 3. 差分更新を実行
       if (rowsToDelete.length > 0) {
-        rowsToDelete.reverse().forEach(rowNum => inputSheet.sheet.deleteRow(rowNum));
+        // 行削除を最適化：降順ソートして後ろから削除
+        rowsToDelete.sort((a, b) => b - a);
+        rowsToDelete.forEach(rowNum => inputSheet.sheet.deleteRow(rowNum));
       }
       if (rowsToAdd.length > 0) {
         const startWriteRow = inputSheet.getLastRow() + 1;

@@ -101,7 +101,7 @@ function syncMainToAllInputSheets() {
       if (rowsToAdd.length > 0) {
         const startWriteRow = inputSheet.getLastRow() + 1;
         inputSheet.sheet.getRange(startWriteRow, 1, rowsToAdd.length, rowsToAdd[0].length).setValues(rowsToAdd);
-        
+
         const sumFormulas = [];
         const dateStartCol = Object.keys(INPUT_SHEET_HEADERS).length + 1;
         const dateStartColLetter = inputSheet.sheet.getRange(1, dateStartCol).getA1Notation().replace("1", "");
@@ -110,6 +110,18 @@ function syncMainToAllInputSheets() {
           sumFormulas.push([`=IFERROR(SUM(${dateStartColLetter}${rowNum}:${rowNum}))`]);
         }
         inputSheet.sheet.getRange(startWriteRow, inputSheet.indices.ACTUAL_HOURS_SUM, rowsToAdd.length, 1).setFormulas(sumFormulas);
+      }
+
+      // フィルタを再作成（行追加・削除後）
+      if (rowsToDelete.length > 0 || rowsToAdd.length > 0) {
+        const existingFilter = inputSheet.sheet.getFilter();
+        if (existingFilter) {
+          existingFilter.remove();
+        }
+        const lastRow = inputSheet.getLastRow();
+        if (lastRow >= inputSheet.startRow) {
+          inputSheet.sheet.getRange(inputSheet.startRow - 1, 1, lastRow - inputSheet.startRow + 2, inputSheet.getLastColumn()).createFilter();
+        }
       }
 
     } catch (e) {

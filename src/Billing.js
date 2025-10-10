@@ -49,24 +49,12 @@ function updateBillingSheet(selectedMonth) {
 
     // 請求シートに書き出すためのデータに整形
     const dataForBillingSheet = billingData.map((row, i) => {
-      const plannedHours = row[mainIndices.PLANNED_HOURS - 1];
-      const actualHours = row[mainIndices.ACTUAL_HOURS - 1];
-
-      // 予定工数が空の場合は実績工数を使用（フォールバック）
-      let finalPlannedHours = plannedHours;
-      if (!plannedHours && plannedHours !== 0) {
-        finalPlannedHours = actualHours;
-        const logMsg = `警告: 行${i + 1}の予定工数が空のため実績工数を使用 (管理No: ${row[mainIndices.MGMT_NO - 1]}, 実績: ${actualHours})`;
-        Logger.log(logMsg);
-        logToSheet_(logMsg);
-      }
-
       return [
         row[mainIndices.MGMT_NO - 1],       // 管理No.
         row[mainIndices.KIBAN - 1],          // 委託業務内容 (機番)
         row[mainIndices.SAGYOU_KUBUN - 1],   // 作業区分
-        finalPlannedHours || '',             // 予定工数 (空の場合は実績工数を使用)
-        actualHours || ''                    // 実工数
+        row[mainIndices.PLANNED_HOURS - 1] || '',  // 予定工数 (空の場合は空欄)
+        row[mainIndices.ACTUAL_HOURS - 1] || ''    // 実工数 (空の場合は空欄)
       ];
     });
     

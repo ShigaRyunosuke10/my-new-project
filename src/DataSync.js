@@ -167,5 +167,20 @@ function syncInputToMain(inputSheetName, editedRange) {
   newRowData[mainIndices.PROGRESS_EDITOR - 1] = tantoushaName;
   newRowData[mainIndices.UPDATE_TS - 1] = new Date();
 
-  targetRange.setValues([newRowData]);
+  // リンク列（数式）を保護: 数式がある列は元の数式を維持
+  const finalRowData = newRowData.map((cell, i) => {
+    return targetFormulas[i] ? targetFormulas[i] : cell;
+  });
+
+  // 数式と値を混在させて書き込む
+  for (let col = 0; col < finalRowData.length; col++) {
+    const cellValue = finalRowData[col];
+    const cellRange = mainSheet.sheet.getRange(targetRowNum, col + 1);
+
+    if (typeof cellValue === 'string' && cellValue.startsWith('=')) {
+      cellRange.setFormula(cellValue);
+    } else {
+      cellRange.setValue(cellValue);
+    }
+  }
 }

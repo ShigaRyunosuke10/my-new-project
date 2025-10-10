@@ -1,19 +1,19 @@
-# Claude Code Configuration ({{PROJECT_NAME}})
+# Claude Code Configuration (my-new-project)
 
 このファイルは、Claude Codeがこのプロジェクトで作業する際の基本設定とワークフローを定義します。
 
-**プロジェクト名**: {{PROJECT_NAME}}
-**最終更新**: {{CURRENT_DATE}}
+**プロジェクト名**: my-new-project
+**最終更新**: 2025-10-10
 
 ---
 
 ## プロジェクト概要
 
 ### 基本情報
-- **リポジトリ**: {{GITHUB_OWNER}}/{{GITHUB_REPO}}
-- **フロントエンド**: ポート{{FRONTEND_PORT}}
-- **バックエンド**: ポート{{BACKEND_PORT}}
-- **テストユーザー**: {{TEST_USER_EMAIL}}
+- **リポジトリ**: ShigaRyunosuke10/my-new-project
+- **フロントエンド**: ポート3001
+- **バックエンド**: ポート8001
+- **テストユーザー**: test-user@example.com
 
 ### 技術スタック
 - **フロントエンド**: [記載してください]
@@ -332,4 +332,4 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 
 ## 最終更新履歴
 
-- {{CURRENT_DATE}}: 初期作成
+- 2025-10-10: 初期作成

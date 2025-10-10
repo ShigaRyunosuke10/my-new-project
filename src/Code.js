@@ -23,7 +23,6 @@ function onOpen(e) {
     .addItem('各種設定と書式を再適用', 'runAllManualMaintenance')
     .addSeparator()
     .addItem('スクリプトのキャッシュをクリア', 'clearScriptCache')
-    .addItem('フォルダからインポートを実行', 'importFromDriveFolder')
     .addToUi();
 }
 

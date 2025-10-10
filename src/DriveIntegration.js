@@ -33,20 +33,17 @@ function bulkCreateMaterialFolders() {
     const values = range.getValues();
     const formulas = range.getFormulas();
 
-    // 手順1: リンクが未作成のユニークな「機番」と「機種」を収集
+    // 手順1: すべてのユニークな「機番」と「機種」を収集（既存リンクの有無に関わらず）
     const uniqueKibans = new Set();
     const uniqueModels = new Set();
     values.forEach((row, i) => {
-      if (!formulas[i][indices.KIBAN_URL - 1] && String(row[indices.KIBAN_URL - 1]).trim() === '') {
-        const kiban = String(row[indices.KIBAN - 1]).trim();
-        if (kiban) uniqueKibans.add(kiban);
-      }
-      if (!formulas[i][indices.SERIES_URL - 1] && String(row[indices.SERIES_URL - 1]).trim() === '') {
-        const model = String(row[indices.MODEL - 1]).trim();
-        if (model) {
-          const match = model.match(/^[A-Za-z]+[0-9]+/);
-          uniqueModels.add(match ? match[0] : model);
-        }
+      const kiban = String(row[indices.KIBAN - 1]).trim();
+      if (kiban) uniqueKibans.add(kiban);
+
+      const model = String(row[indices.MODEL - 1]).trim();
+      if (model) {
+        const match = model.match(/^[A-Za-z]+[0-9]+/);
+        uniqueModels.add(match ? match[0] : model);
       }
     });
 
@@ -79,7 +76,8 @@ function bulkCreateMaterialFolders() {
     let modified = false;
     values.forEach((row, i) => {
       const kiban = String(row[indices.KIBAN - 1]).trim();
-      if (kibanUrlMap.has(kiban) && !formulas[i][indices.KIBAN_URL - 1]) {
+      if (kibanUrlMap.has(kiban)) {
+        // 既存リンクの有無に関わらず上書き
         outputData[i][indices.KIBAN_URL - 1] = createHyperlinkFormula(kibanUrlMap.get(kiban), kiban);
         modified = true;
       }
@@ -87,7 +85,8 @@ function bulkCreateMaterialFolders() {
       if (model) {
         const match = model.match(/^[A-Za-z]+[0-9]+/);
         const groupValue = match ? match[0] : model;
-        if (modelUrlMap.has(groupValue) && !formulas[i][indices.SERIES_URL - 1]) {
+        if (modelUrlMap.has(groupValue)) {
+          // 既存リンクの有無に関わらず上書き
           outputData[i][indices.SERIES_URL - 1] = createHyperlinkFormula(modelUrlMap.get(groupValue), groupValue);
           modified = true;
         }

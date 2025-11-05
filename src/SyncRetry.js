@@ -214,9 +214,34 @@ function retryAllFailedSyncs() {
 }
 
 /**
- * 夜間自動リトライのトリガーを設定します（カスタムメニューから実行）
+ * 夜間自動リトライトリガーが未設定の場合のみ作成します（内部関数）
+ * runAllManualMaintenance()から自動的に呼ばれます。
+ */
+function setupNightlyRetryTriggerIfNotExists() {
+  const triggers = ScriptApp.getProjectTriggers();
+  const exists = triggers.some(t => t.getHandlerFunction() === 'retryAllFailedSyncs');
+
+  if (!exists) {
+    try {
+      ScriptApp.newTrigger('retryAllFailedSyncs')
+        .timeBased()
+        .atHour(2)
+        .everyDays(1)
+        .create();
+      Logger.log('夜間自動リトライトリガーを自動設定しました（毎日午前2時）');
+    } catch (e) {
+      Logger.log(`トリガー自動設定エラー: ${e.message}`);
+    }
+  } else {
+    Logger.log('夜間自動リトライトリガーは既に設定されています');
+  }
+}
+
+/**
+ * 夜間自動リトライのトリガーを設定します（Apps Script エディタから手動実行）
  *
- * 毎日午前2時に retryAllFailedSyncs() を実行するトリガーを作成します。
+ * 通常は runAllManualMaintenance() 実行時に自動設定されるため、
+ * 手動実行は不要です。トリガーを再作成したい場合のみ使用してください。
  */
 function setupNightlyRetryTrigger() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -248,7 +273,9 @@ function setupNightlyRetryTrigger() {
 }
 
 /**
- * 夜間自動リトライのトリガーを削除します（カスタムメニューから実行）
+ * 夜間自動リトライのトリガーを削除します（Apps Script エディタから手動実行）
+ *
+ * 自動リトライを完全に停止したい場合に使用してください。
  */
 function removeNightlyRetryTrigger() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();

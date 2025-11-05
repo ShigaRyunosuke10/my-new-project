@@ -27,10 +27,7 @@ function onOpen(e) {
     .addSubMenu(ui.createMenu('同期失敗対策')
       .addItem('失敗した同期を再実行', 'retryAllFailedSyncs')
       .addItem('同期失敗履歴を表示', 'showSyncFailures')
-      .addItem('同期失敗履歴をクリア', 'clearSyncFailureLog')
-      .addSeparator()
-      .addItem('夜間自動リトライを設定（毎日午前2時）', 'setupNightlyRetryTrigger')
-      .addItem('夜間自動リトライを解除', 'removeNightlyRetryTrigger'))
+      .addItem('同期失敗履歴をクリア', 'clearSyncFailureLog'))
     .addSeparator()
     .addItem('各種設定と書式を再適用', 'runAllManualMaintenance')
     .addToUi();
@@ -371,7 +368,11 @@ function runAllManualMaintenance() {
   applyStandardFormattingToMasterSheets();
   colorizeAllSheets();
   setupAllDataValidations();
-  SpreadsheetApp.getActiveSpreadsheet().toast('適用が完了しました。', '完了', 3);
+
+  // 夜間自動リトライトリガーを設定（既存トリガーがある場合は再作成しない）
+  setupNightlyRetryTriggerIfNotExists();
+
+  SpreadsheetApp.getActiveSpreadsheet().toast('適用が完了しました（夜間自動リトライも設定済み）', '完了', 3);
 }
 
 /**

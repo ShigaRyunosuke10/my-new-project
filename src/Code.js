@@ -13,24 +13,18 @@ function onOpen(e) {
   ui.createMenu('カスタムメニュー')
     .addItem('ソートビューを作成', 'createSortedView')
     .addItem('表示を更新', 'refreshSortedView')
-    .addItem('ソートビューを全て削除', 'removeAllSortedViews')
-    .addSeparator()
-    .addItem('請求シートを更新', 'showBillingSidebar')
     .addSeparator()
     .addItem('予定工数を一括同期', 'syncAllPlannedHoursToInputSheets')
     .addItem('完了案件を請求シートに一括同期', 'syncAllCompletedToBillingSheet')
-    .addItem('請求シートの見た目を整える', 'formatBillingSheet')
     .addSeparator()
     .addItem('全資料フォルダ作成', 'bulkCreateMaterialFolders')
-    .addItem('週次バックアップを作成', 'createWeeklyBackup')
     .addSeparator()
-    .addItem('工数シートのフィルタを有効化', 'enableFiltersOnAllInputSheets')
-    .addItem('工数シート: 先月・今月・来月のみ表示', 'showRecentThreeMonths')
-    .addItem('工数シート: 全ての月を表示', 'showAllMonths')
+    .addSubMenu(ui.createMenu('工数シート表示設定')
+      .addItem('フィルタを有効化', 'enableFiltersOnAllInputSheets')
+      .addItem('先月・今月・来月のみ表示', 'showRecentThreeMonths')
+      .addItem('全ての月を表示', 'showAllMonths'))
     .addSeparator()
     .addItem('各種設定と書式を再適用', 'runAllManualMaintenance')
-    .addSeparator()
-    .addItem('スクリプトのキャッシュをクリア', 'clearScriptCache')
     .addToUi();
 }
 
@@ -362,6 +356,8 @@ function runAllManualMaintenance() {
   SpreadsheetApp.getActiveSpreadsheet().toast('各種設定と書式を適用中...', '処理中', 3);
   applyStandardFormattingToAllSheets();
   applyStandardFormattingToMainSheet();
+  formatBillingSheet();
+  applyStandardFormattingToMasterSheets();
   colorizeAllSheets();
   setupAllDataValidations();
   SpreadsheetApp.getActiveSpreadsheet().toast('適用が完了しました。', '完了', 3);
@@ -430,7 +426,7 @@ function applyStandardFormattingToMainSheet() {
         headerRange.setBackground(CONFIG.COLORS.HEADER_BACKGROUND)
                    .setFontColor('#ffffff')
                    .setFontWeight('bold');
-        
+
         sheet.setFrozenRows(1);
         sheet.setFrozenColumns(4);
       } catch(e) {
@@ -438,6 +434,70 @@ function applyStandardFormattingToMainSheet() {
       }
     }
   });
+}
+
+/**
+ * マスタシート（進捗マスタ、担当者マスタ、作業区分マスタ、問い合わせマスタ）に標準デザインを適用します
+ */
+function applyStandardFormattingToMasterSheets() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const masterSheetNames = [
+    CONFIG.SHEETS.SHINCHOKU_MASTER,
+    CONFIG.SHEETS.TANTOUSHA_MASTER,
+    CONFIG.SHEETS.SAGYOU_KUBUN_MASTER,
+    CONFIG.SHEETS.TOIAWASE_MASTER
+  ];
+
+  masterSheetNames.forEach(sheetName => {
+    const sheet = ss.getSheetByName(sheetName);
+    if (!sheet) {
+      Logger.log(`マスタシート「${sheetName}」が見つかりません`);
+      return;
+    }
+
+    try {
+      const lastRow = sheet.getLastRow();
+      const lastCol = sheet.getLastColumn();
+
+      if (lastRow < 1 || lastCol < 1) return;
+
+      // 1. ヘッダー行のスタイル設定
+      const headerRange = sheet.getRange(1, 1, 1, lastCol);
+      headerRange
+        .setBackground('#4f5459')
+        .setFontColor('#ffffff')
+        .setFontWeight('bold')
+        .setHorizontalAlignment('center')
+        .setVerticalAlignment('middle');
+
+      // 2. ヘッダー行を固定
+      sheet.setFrozenRows(1);
+
+      // 3. データ行が存在する場合の書式設定
+      if (lastRow >= 2) {
+        const dataRange = sheet.getRange(2, 1, lastRow - 1, lastCol);
+
+        // 全体にフォントとサイズを設定
+        dataRange.setFontFamily('Arial').setFontSize(12);
+
+        // 罫線を設定
+        dataRange.setBorder(true, true, true, true, true, true, '#cccccc', SpreadsheetApp.BorderStyle.SOLID);
+
+        // 偶数行に薄い背景色を設定
+        for (let i = 2; i <= lastRow; i++) {
+          if ((i - 2) % 2 === 1) {  // 偶数行（データ行基準）
+            sheet.getRange(i, 1, 1, lastCol).setBackground('#f0f5f5');
+          }
+        }
+      }
+
+      Logger.log(`マスタシート「${sheetName}」の見た目を整えました`);
+    } catch (e) {
+      Logger.log(`マスタシート「${sheetName}」の書式設定中にエラー: ${e.message}`);
+    }
+  });
+
+  SpreadsheetApp.getActiveSpreadsheet().toast('マスタシートの見た目を整えました。', '完了', 3);
 }
 
 function setupAllDataValidations() {

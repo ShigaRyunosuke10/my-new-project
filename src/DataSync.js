@@ -473,7 +473,7 @@ function formatBillingSheet() {
   // 1. ヘッダー行のスタイル設定
   const headerRange = billingSheet.getRange(1, 1, 1, 6);
   headerRange
-    .setBackground('#1f4788')
+    .setBackground('#4f5459')
     .setFontColor('#ffffff')
     .setFontWeight('bold')
     .setHorizontalAlignment('center')
@@ -487,7 +487,7 @@ function formatBillingSheet() {
     const dataRange = billingSheet.getRange(2, 1, lastRow - 1, 6);
 
     // 全体にフォントとサイズを設定
-    dataRange.setFontFamily('Arial').setFontSize(11);
+    dataRange.setFontFamily('Arial').setFontSize(12);
 
     // 罫線を設定
     dataRange.setBorder(true, true, true, true, true, true, '#cccccc', SpreadsheetApp.BorderStyle.SOLID);
@@ -498,7 +498,7 @@ function formatBillingSheet() {
     // 偶数行に薄い背景色を設定
     for (let i = 2; i <= lastRow; i++) {
       if ((i - 2) % 2 === 1) {  // 偶数行（データ行基準）
-        billingSheet.getRange(i, 1, 1, 6).setBackground('#f3f3f3');
+        billingSheet.getRange(i, 1, 1, 6).setBackground('#f0f5f5');
       }
     }
   }

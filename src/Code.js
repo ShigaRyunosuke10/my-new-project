@@ -372,7 +372,10 @@ function runAllManualMaintenance() {
   // 今月のカレンダーを補完（欠けている日付を追加）
   ensureCurrentMonthComplete();
 
-  SpreadsheetApp.getActiveSpreadsheet().toast('適用が完了しました（カレンダーも補完済み）。', '完了', 3);
+  // フィルタを再適用（新規追加した列も含める）
+  enableFiltersOnAllInputSheets();
+
+  SpreadsheetApp.getActiveSpreadsheet().toast('適用が完了しました（カレンダー・フィルタも更新済み）。', '完了', 3);
 }
 
 /**

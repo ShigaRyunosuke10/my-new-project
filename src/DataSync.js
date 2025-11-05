@@ -291,44 +291,108 @@ function syncPlannedHoursToInputSheets(editedRow) {
 }
 
 // =================================================================================
-// === 予定工数の一括同期処理 ===
+// === 予定工数の一括同期処理（最適化版） ===
 // =================================================================================
 /**
  * メインシート全体の予定工数を全工数シートに一括同期します（カスタムメニューから実行）
  * 一斉入力時など、onEditトリガーで処理されない複数セル編集後に使用します。
+ *
+ * パフォーマンス最適化:
+ * - バッチ処理で工数シート読み取りを最小化
+ * - 不要な行（管理No/作業区分が空）を事前除外
+ * - 色付け処理を削除
  */
 function syncAllPlannedHoursToInputSheets() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const mainSheet = new MainSheet();
+  const mainIndices = mainSheet.indices;
 
   ss.toast('予定工数の一括同期を開始します...', '処理中', 3);
 
-  // メインシートのデータ行数を取得
+  // 1. メインシートの全データを一度に取得
   const lastRow = mainSheet.getLastRow();
   if (lastRow < mainSheet.startRow) {
     ss.toast('同期対象のデータがありません。', '完了', 3);
     return;
   }
 
-  let totalProcessed = 0;
+  const mainData = mainSheet.sheet.getRange(mainSheet.startRow, 1, lastRow - mainSheet.startRow + 1, mainSheet.getLastColumn()).getValues();
 
-  // メインシートの各行をループして予定工数を同期
-  for (let rowNum = mainSheet.startRow; rowNum <= lastRow; rowNum++) {
+  // 2. 有効な行のみを抽出（管理No + 作業区分が両方とも存在）
+  const validRows = new Map();  // key: 担当者名, value: [{mgmtNo, sagyouKubun, plannedHours}, ...]
+
+  mainData.forEach((row, index) => {
+    const mgmtNo = row[mainIndices.MGMT_NO - 1];
+    const sagyouKubun = row[mainIndices.SAGYOU_KUBUN - 1];
+    const plannedHours = row[mainIndices.PLANNED_HOURS - 1];
+    const tantousha = row[mainIndices.TANTOUSHA - 1];
+
+    // 管理No、作業区分、担当者が全て存在する行のみ処理
+    if (mgmtNo && sagyouKubun && tantousha) {
+      const key = `${mgmtNo}_${sagyouKubun}`;
+
+      if (!validRows.has(tantousha)) {
+        validRows.set(tantousha, new Map());
+      }
+      validRows.get(tantousha).set(key, plannedHours);
+    }
+  });
+
+  let totalUpdated = 0;
+
+  // 3. 担当者ごとに工数シートを処理
+  for (const [tantoushaName, plannedHoursMap] of validRows.entries()) {
     try {
-      // 既存の単一行同期関数を再利用
-      syncPlannedHoursToInputSheets(rowNum);
-      totalProcessed++;
+      const inputSheet = new InputSheet(tantoushaName);
+
+      // 工数シートにデータが存在するかチェック
+      if (inputSheet.getLastRow() < inputSheet.startRow) {
+        continue;
+      }
+
+      // 工数シートの全データを一度に取得
+      const inputRange = inputSheet.sheet.getRange(inputSheet.startRow, 1, inputSheet.getLastRow() - inputSheet.startRow + 1, inputSheet.getLastColumn());
+      const inputValues = inputRange.getValues();
+      const inputFormulas = inputRange.getFormulas();
+
+      // 更新対象の行を特定
+      const updates = [];  // [{row: rowNum, value: plannedHours}, ...]
+
+      inputValues.forEach((row, i) => {
+        const rowMgmtNo = row[inputSheet.indices.MGMT_NO - 1];
+        const rowSagyouKubun = row[inputSheet.indices.SAGYOU_KUBUN - 1];
+        const rowKey = `${rowMgmtNo}_${rowSagyouKubun}`;
+
+        if (plannedHoursMap.has(rowKey)) {
+          const targetRowNum = inputSheet.startRow + i;
+          const targetCol = inputSheet.indices.PLANNED_HOURS;
+
+          // 数式がない場合のみ更新
+          if (!inputFormulas[i][targetCol - 1]) {
+            updates.push({
+              row: targetRowNum,
+              value: plannedHoursMap.get(rowKey)
+            });
+          }
+        }
+      });
+
+      // まとめて更新
+      updates.forEach(update => {
+        inputSheet.sheet.getRange(update.row, inputSheet.indices.PLANNED_HOURS).setValue(update.value);
+        totalUpdated++;
+      });
+
+      Logger.log(`${tantoushaName} の工数シート: ${updates.length}件を更新`);
+
     } catch (e) {
-      Logger.log(`行${rowNum}の予定工数同期中にエラー: ${e.message}`);
+      Logger.log(`${tantoushaName} の工数シートへの一括同期中にエラー: ${e.message}`);
     }
   }
 
-  // 色付け処理を実行
-  colorizeAllSheets();
-
   // 完了通知
-  ss.toast(`${totalProcessed}行の予定工数を全工数シートに同期しました。`, '同期完了', 5);
-  Logger.log(`予定工数一括同期完了: ${totalProcessed}行を処理しました`);
+  ss.toast(`${totalUpdated}件の予定工数を工数シートに同期しました。`, '同期完了', 5);
+  Logger.log(`予定工数一括同期完了: ${totalUpdated}件を更新しました`);
 }
 
 // =================================================================================

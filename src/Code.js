@@ -68,7 +68,13 @@ function onEdit(e) {
         ss.toast('担当者の変更を検出しました。関連シートを同期します...', '同期中', 5);
         syncMainToAllInputSheets();
         colorizeAllSheets();
-      } 
+      }
+      // 「予定工数」が編集された時の処理
+      else if (editedCol === mainSheet.indices.PLANNED_HOURS && editedRow >= mainSheet.startRow) {
+        ss.toast('予定工数の変更を検出しました。工数シートに同期します...', '同期中', 3);
+        syncPlannedHoursToInputSheets(editedRow);
+        colorizeAllSheets();
+      }
       // 「仕掛かり日」が入力された時の処理
       else if (editedCol === mainSheet.indices.START_DATE && editedRow >= mainSheet.startRow) {
         // 日付の妥当性チェックを追加

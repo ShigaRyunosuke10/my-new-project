@@ -203,3 +203,82 @@ function syncInputToMain(inputSheetName, editedRange) {
     }
   }
 }
+
+// =================================================================================
+// === 予定工数の同期処理 (メイン → 全工数シート) ===
+// =================================================================================
+/**
+ * メインシートで予定工数が編集されたときに、全工数シートの該当行を更新します。
+ * @param {number} editedRow - メインシートで編集された行番号
+ */
+function syncPlannedHoursToInputSheets(editedRow) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const mainSheet = new MainSheet();
+  const mainIndices = mainSheet.indices;
+
+  // 編集された行のデータを取得
+  const editedRowRange = mainSheet.sheet.getRange(editedRow, 1, 1, mainSheet.getLastColumn());
+  const editedRowValues = editedRowRange.getValues()[0];
+
+  const mgmtNo = editedRowValues[mainIndices.MGMT_NO - 1];
+  const sagyouKubun = editedRowValues[mainIndices.SAGYOU_KUBUN - 1];
+  const newPlannedHours = editedRowValues[mainIndices.PLANNED_HOURS - 1];
+
+  // 管理Noまたは作業区分が空の場合はスキップ
+  if (!mgmtNo || !sagyouKubun) {
+    ss.toast('管理Noまたは作業区分が空のため、予定工数を同期できません。', '同期スキップ', 3);
+    return;
+  }
+
+  const uniqueKey = `${mgmtNo}_${sagyouKubun}`;
+  const tantoushaList = mainSheet.getTantoushaList();
+  let syncCount = 0;
+
+  // 全工数シートをループして該当行を更新
+  tantoushaList.forEach(tantousha => {
+    try {
+      const inputSheet = new InputSheet(tantousha.name);
+
+      // 工数シートにデータが存在するかチェック
+      if (inputSheet.getLastRow() < inputSheet.startRow) {
+        return; // データがない場合はスキップ
+      }
+
+      // 工数シートのデータを取得
+      const inputRange = inputSheet.sheet.getRange(inputSheet.startRow, 1, inputSheet.getLastRow() - inputSheet.startRow + 1, inputSheet.getLastColumn());
+      const inputValues = inputRange.getValues();
+      const inputFormulas = inputRange.getFormulas();
+
+      // 該当行を検索（管理No + 作業区分がキー）
+      for (let i = 0; i < inputValues.length; i++) {
+        const row = inputValues[i];
+        const rowMgmtNo = row[inputSheet.indices.MGMT_NO - 1];
+        const rowSagyouKubun = row[inputSheet.indices.SAGYOU_KUBUN - 1];
+        const rowKey = `${rowMgmtNo}_${rowSagyouKubun}`;
+
+        if (rowKey === uniqueKey) {
+          // 該当行が見つかった - 予定工数を更新
+          const targetRowNum = inputSheet.startRow + i;
+          const targetCol = inputSheet.indices.PLANNED_HOURS;
+
+          // 数式を保護しながら値のみ更新
+          if (!inputFormulas[i][targetCol - 1]) {
+            inputSheet.sheet.getRange(targetRowNum, targetCol).setValue(newPlannedHours);
+            syncCount++;
+            Logger.log(`${tantousha.name} の工数シート: 行${targetRowNum} の予定工数を ${newPlannedHours} に更新`);
+          }
+          break; // 該当行は1つのみのはずなのでループを抜ける
+        }
+      }
+    } catch (e) {
+      Logger.log(`${tantousha.name} の工数シートへの予定工数同期中にエラー: ${e.message}`);
+    }
+  });
+
+  // 同期結果を通知
+  if (syncCount > 0) {
+    ss.toast(`${syncCount}件の工数シートに予定工数を同期しました。`, '同期完了', 3);
+  } else {
+    ss.toast('該当する工数シートが見つかりませんでした。', '同期結果', 3);
+  }
+}

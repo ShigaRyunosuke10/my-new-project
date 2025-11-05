@@ -205,6 +205,18 @@ function addNextMonthColumnsToAllInputSheets() {
         
         sheet.setConditionalFormatRules(rules);
 
+        // 追加した日付列に書式を適用（緑線ボーダー、右揃えなど）
+        const lastRow = sheet.getLastRow();
+        if (lastRow > 2) {
+          const newDataRange = sheet.getRange(3, newColumnStart, lastRow - 2, daysInNextMonth);
+          newDataRange
+            .setBorder(true, true, true, true, true, true, "#cccccc", SpreadsheetApp.BorderStyle.SOLID)
+            .setHorizontalAlignment("right")
+            .setVerticalAlignment("middle")
+            .setFontFamily("Arial")
+            .setFontSize(12);
+        }
+
         Logger.log(`シート「${sheet.getName()}」に${targetMonth + 1}月分のカレンダーを追加し、書式設定を行いました。`);
 
       } catch (e) {

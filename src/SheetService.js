@@ -215,6 +215,108 @@ function addNextMonthColumnsToAllInputSheets() {
   SpreadsheetApp.getActiveSpreadsheet().toast('全工数シートのカレンダーを更新しました。');
 }
 
+/**
+ * 今月のカレンダーを補完します（欠けている日付を追加）
+ * 各種設定と書式を再適用する際に実行され、今月の日付が完全に揃っているか確認します。
+ */
+function ensureCurrentMonthComplete() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const allSheets = ss.getSheets();
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth();
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+  // 祝日リストを準備
+  const holidays = new Set([...getJapaneseHolidays(currentYear)]);
+  const holidayStrings = Array.from(holidays);
+
+  allSheets.forEach(sheet => {
+    if (sheet.getName().startsWith(CONFIG.SHEETS.INPUT_PREFIX)) {
+      try {
+        const lastCol = sheet.getLastColumn();
+        if (lastCol === 0) return; // 空のシートはスキップ
+
+        const dateHeaderRange = sheet.getRange(1, 1, 1, lastCol);
+        const dateHeaderValues = dateHeaderRange.getValues()[0];
+
+        // 今月の日付を抽出
+        const currentMonthDates = [];
+        const currentMonthColumns = [];
+        for (let i = 0; i < dateHeaderValues.length; i++) {
+          const val = dateHeaderValues[i];
+          if (val instanceof Date && val.getFullYear() === currentYear && val.getMonth() === currentMonth) {
+            currentMonthDates.push(val.getDate());
+            currentMonthColumns.push(i + 1); // 列番号（1始まり）
+          }
+        }
+
+        if (currentMonthDates.length === 0) {
+          Logger.log(`シート「${sheet.getName()}」に今月のカレンダーが存在しません。スキップします。`);
+          return;
+        }
+
+        // 欠けている日付を特定
+        const missingDays = [];
+        for (let day = 1; day <= daysInMonth; day++) {
+          if (!currentMonthDates.includes(day)) {
+            missingDays.push(day);
+          }
+        }
+
+        if (missingDays.length === 0) {
+          Logger.log(`シート「${sheet.getName()}」の今月カレンダーは完全です。`);
+          return;
+        }
+
+        // 最後の今月日付の次の列位置を特定
+        const lastCurrentMonthCol = Math.max(...currentMonthColumns);
+        const insertCol = lastCurrentMonthCol + 1;
+
+        // 欠けている日付を追加
+        const newDateHeaders = [];
+        missingDays.forEach(day => {
+          newDateHeaders.push(new Date(currentYear, currentMonth, day));
+        });
+
+        const newRange = sheet.getRange(1, insertCol, 1, missingDays.length);
+        newRange.setValues([newDateHeaders]).setNumberFormat("M/d");
+
+        // 条件付き書式を適用
+        const rules = sheet.getConditionalFormatRules();
+
+        // 週末用のルール
+        const weekendRule = SpreadsheetApp.newConditionalFormatRule()
+          .whenFormulaSatisfied(`=OR(WEEKDAY(${newRange.getA1Notation().split(':')[0]})=1, WEEKDAY(${newRange.getA1Notation().split(':')[0]})=7)`)
+          .setBackground(CONFIG.COLORS.WEEKEND_HOLIDAY)
+          .setRanges([newRange])
+          .build();
+        rules.push(weekendRule);
+
+        // 祝日用のルール
+        if (holidayStrings.length > 0) {
+          const holidayFormula = `=MATCH(TEXT(${newRange.getA1Notation().split(':')[0]},"yyyy-mm-dd"), {${holidayStrings.map(d => `"${d}"`).join(",")}} ,0)`;
+          const holidayRule = SpreadsheetApp.newConditionalFormatRule()
+            .whenFormulaSatisfied(holidayFormula)
+            .setBackground(CONFIG.COLORS.WEEKEND_HOLIDAY)
+            .setRanges([newRange])
+            .build();
+          rules.push(holidayRule);
+        }
+
+        sheet.setConditionalFormatRules(rules);
+
+        Logger.log(`シート「${sheet.getName()}」に今月の欠けている日付（${missingDays.join(', ')}日）を追加しました。`);
+
+      } catch (e) {
+        Logger.log(`「${sheet.getName()}」の今月カレンダー補完中にエラー: ${e.message}`);
+      }
+    }
+  });
+
+  SpreadsheetApp.getActiveSpreadsheet().toast('今月のカレンダーを補完しました。', '完了', 2);
+}
+
 // =================================================================================
 // === 月フィルタリング機能 ===
 // =================================================================================

@@ -369,10 +369,10 @@ function runAllManualMaintenance() {
   colorizeAllSheets();
   setupAllDataValidations();
 
-  // 翌月カレンダーを追加（未作成の場合のみ）
-  addNextMonthColumnsToAllInputSheets();
+  // 今月のカレンダーを補完（欠けている日付を追加）
+  ensureCurrentMonthComplete();
 
-  SpreadsheetApp.getActiveSpreadsheet().toast('適用が完了しました（カレンダーも更新済み）。', '完了', 3);
+  SpreadsheetApp.getActiveSpreadsheet().toast('適用が完了しました（カレンダーも補完済み）。', '完了', 3);
 }
 
 /**

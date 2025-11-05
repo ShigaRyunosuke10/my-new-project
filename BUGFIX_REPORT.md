@@ -8,6 +8,46 @@
 
 ## 🆕 機能追加 (2025-11-05)
 
+### ⚡ リンク同期のパフォーマンス最適化
+
+**ファイル**: `DriveIntegration.js`
+**最適化日**: 2025-11-05
+**最適化内容**: 工数シートへのリンク同期処理で、既にリンクが入っている行をスキップする処理を追加
+**影響**: 実行時間を約119秒から大幅に短縮（2回目以降の実行時）
+
+#### 実装詳細
+
+**DriveIntegration.js - syncLinksToInputSheets_()にスキップ処理を追加 (190-220行目)**
+
+```javascript
+// 既存のリンク値をチェック
+const currentKibanLink = row[inputIndices.KIBAN_URL - 1];
+const currentSeriesLink = row[inputIndices.SERIES_URL - 1];
+
+// 両方のリンクが既に入っている場合はスキップ（パフォーマンス最適化）
+if (currentKibanLink && currentSeriesLink) {
+  return;
+}
+
+// 機番リンクを設定（空の場合のみ）
+if (links.kibanLink && !currentKibanLink) {
+  // setFormula or setValue
+}
+
+// STD資料リンクを設定（空の場合のみ）
+if (links.seriesLink && !currentSeriesLink) {
+  // setFormula or setValue
+}
+```
+
+**改善点**:
+- 両方のリンクが既に入っている行は完全にスキップ
+- 空のリンクのみを対象に書き込みを実行
+- 不要な`getRange()`、`setFormula()`、`setValue()`呼び出しを削減
+- 2回目以降の実行時は既にリンクが入っているため、大幅な高速化を実現
+
+---
+
 ### 🔗 工数シートにリンク列を追加
 
 **ファイル**: `Config.js`, `DataSync.js`, `Code.js`, `DriveIntegration.js`

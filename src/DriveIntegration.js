@@ -187,10 +187,19 @@ function syncLinksToInputSheets_(mainSheet) {
         const links = mainLinksMap.get(key);
         if (!links) return;
 
+        // 既存のリンク値をチェック
+        const currentKibanLink = row[inputIndices.KIBAN_URL - 1];
+        const currentSeriesLink = row[inputIndices.SERIES_URL - 1];
+
+        // 両方のリンクが既に入っている場合はスキップ（パフォーマンス最適化）
+        if (currentKibanLink && currentSeriesLink) {
+          return;
+        }
+
         const rowNum = inputSheet.startRow + i;
 
-        // 機番リンクを設定
-        if (links.kibanLink) {
+        // 機番リンクを設定（空の場合のみ）
+        if (links.kibanLink && !currentKibanLink) {
           const kibanCell = inputSheet.sheet.getRange(rowNum, inputIndices.KIBAN_URL);
           if (typeof links.kibanLink === 'string' && links.kibanLink.startsWith('=')) {
             kibanCell.setFormula(links.kibanLink);
@@ -199,8 +208,8 @@ function syncLinksToInputSheets_(mainSheet) {
           }
         }
 
-        // STD資料リンクを設定
-        if (links.seriesLink) {
+        // STD資料リンクを設定（空の場合のみ）
+        if (links.seriesLink && !currentSeriesLink) {
           const seriesCell = inputSheet.sheet.getRange(rowNum, inputIndices.SERIES_URL);
           if (typeof links.seriesLink === 'string' && links.seriesLink.startsWith('=')) {
             seriesCell.setFormula(links.seriesLink);

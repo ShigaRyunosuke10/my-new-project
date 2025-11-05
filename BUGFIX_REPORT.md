@@ -8,6 +8,281 @@
 
 ## 🆕 機能追加 (2025-11-05)
 
+### 🔗 工数シートにリンク列を追加
+
+**ファイル**: `Config.js`, `DataSync.js`, `Code.js`, `DriveIntegration.js`
+**追加日**: 2025-11-05
+**追加内容**: 工数シートに「機番(リンク)」「STD資料(リンク)」列を追加し、メインシートのリンクを自動同期
+**影響**: 工数シートから直接Google Driveフォルダにアクセス可能になり、作業効率が向上
+
+#### 実装詳細
+
+**1. Config.js - INPUT_SHEET_HEADERSにリンク列を追加 (54-56行目)**
+
+```javascript
+const INPUT_SHEET_HEADERS = {
+  MGMT_NO: "管理No", SAGYOU_KUBUN: "作業区分", KIBAN: "機番", PROGRESS: "進捗",
+  KIBAN_URL: "機番(リンク)", SERIES_URL: "STD資料(リンク)", REMARKS: "備考",  // 追加
+  PLANNED_HOURS:"予定工数", ACTUAL_HOURS_SUM: "実績工数合計", SEPARATOR: "",
+};
+```
+
+**配置**: 進捗の後、備考の前に配置
+
+**2. DataSync.js - rowsToAddにリンク列データを追加 (90-91行目)**
+
+```javascript
+rowsToAdd.push([
+  value[mainIndices.MGMT_NO - 1],
+  value[mainIndices.SAGYOU_KUBUN - 1],
+  value[mainIndices.KIBAN - 1],
+  value[mainIndices.PROGRESS - 1] || "",
+  value[mainIndices.KIBAN_URL - 1] || "",      // 機番(リンク) - 追加
+  value[mainIndices.SERIES_URL - 1] || "",     // STD資料(リンク) - 追加
+  "",  // 備考列（初期値は空）
+  value[mainIndices.PLANNED_HOURS - 1],
+]);
+```
+
+**機能**: メインシート→工数シートの同期時に、新規追加行にリンクもコピー
+
+**3. Code.js - updateInputSheetHeaders()関数を新規作成 (367-395行目)**
+
+```javascript
+function updateInputSheetHeaders() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const allSheets = ss.getSheets();
+  const headerValues = Object.values(INPUT_SHEET_HEADERS);
+
+  allSheets.forEach(sheet => {
+    const sheetName = sheet.getName();
+    if (sheetName.startsWith(CONFIG.SHEETS.INPUT_PREFIX)) {
+      try {
+        const currentLastCol = sheet.getLastColumn();
+        const requiredCols = headerValues.length;
+
+        // 必要に応じて列を追加
+        if (currentLastCol < requiredCols) {
+          sheet.insertColumnsAfter(currentLastCol, requiredCols - currentLastCol);
+        }
+
+        // ヘッダー行を更新
+        sheet.getRange(1, 1, 1, requiredCols).setValues([headerValues]);
+        Logger.log(`工数シート「${sheetName}」のヘッダーを更新しました。`);
+      } catch (e) {
+        Logger.log(`工数シート「${sheetName}」のヘッダー更新中にエラー: ${e.message}`);
+      }
+    }
+  });
+}
+```
+
+**機能**: 既存の全工数シートにリンク列のヘッダーを追加
+
+**4. Code.js - runAllManualMaintenance()を更新 (357行目)**
+
+```javascript
+function runAllManualMaintenance() {
+  SpreadsheetApp.getActiveSpreadsheet().toast('各種設定と書式を適用中...', '処理中', 3);
+  updateInputSheetHeaders();  // 追加
+  applyStandardFormattingToAllSheets();
+  // ...
+}
+```
+
+**5. DriveIntegration.js - syncLinksToInputSheets_()関数を新規作成 (128-218行目)**
+
+```javascript
+function syncLinksToInputSheets_(mainSheet) {
+  // メインシートのリンクをマップに変換
+  const mainLinksMap = new Map();
+  mainData.forEach((row, i) => {
+    const mgmtNo = row[mainIndices.MGMT_NO - 1];
+    const sagyouKubun = row[mainIndices.SAGYOU_KUBUN - 1];
+    if (!mgmtNo || !sagyouKubun) return;
+
+    const key = `${mgmtNo}_${sagyouKubun}`;
+    const kibanLink = mainFormulas[i][mainIndices.KIBAN_URL - 1] || row[mainIndices.KIBAN_URL - 1];
+    const seriesLink = mainFormulas[i][mainIndices.SERIES_URL - 1] || row[mainIndices.SERIES_URL - 1];
+
+    mainLinksMap.set(key, { kibanLink, seriesLink });
+  });
+
+  // 各工数シートの既存行にリンクを同期
+  tantoushaList.forEach(tantousha => {
+    const inputSheet = new InputSheet(tantousha.name);
+    inputData.forEach((row, i) => {
+      const key = `${mgmtNo}_${sagyouKubun}`;
+      const links = mainLinksMap.get(key);
+      if (!links) return;
+
+      const rowNum = inputSheet.startRow + i;
+
+      // 機番リンクを設定
+      if (links.kibanLink) {
+        const kibanCell = inputSheet.sheet.getRange(rowNum, inputIndices.KIBAN_URL);
+        if (typeof links.kibanLink === 'string' && links.kibanLink.startsWith('=')) {
+          kibanCell.setFormula(links.kibanLink);
+        } else {
+          kibanCell.setValue(links.kibanLink);
+        }
+      }
+
+      // STD資料リンクも同様に設定
+    });
+  });
+}
+```
+
+**機能**: 「全資料フォルダ作成」実行時に、工数シートの既存行にもリンクを同期
+
+**6. DriveIntegration.js - bulkCreateMaterialFolders()を更新 (115行目)**
+
+```javascript
+// 手順5: 工数シートにもリンクを同期
+syncLinksToInputSheets_(mainSheet);
+```
+
+#### 使用方法
+
+**初回セットアップ**:
+1. カスタムメニューから「各種設定と書式を再適用」を選択
+2. 全工数シートにリンク列のヘッダーが追加される
+
+**リンクの同期**:
+1. カスタムメニューから「全資料フォルダ作成」を選択
+2. メインシートにリンクが作成され、同時に全工数シートにも同期される
+
+**新規案件の追加**:
+- メインシートに案件を追加し、担当者を設定すると、工数シートにリンク列も含めて自動同期される
+
+#### 動作フロー
+
+```
+[全資料フォルダ作成]
+  ↓
+[メインシートにリンク作成]
+  ↓
+[syncLinksToInputSheets_()実行]
+  ↓
+[全工数シートの既存行にリンク同期] ← 新機能
+  ↓
+[完了通知]
+```
+
+#### テスト項目
+
+1. 「各種設定と書式を再適用」実行 → 工数シートにリンク列が追加されることを確認
+2. 「全資料フォルダ作成」実行 → メインシートと工数シートの両方にリンクが設定されることを確認
+3. 新規案件を追加 → 工数シートにリンク列も含めて同期されることを確認
+4. リンククリック → Google Driveフォルダが正しく開くことを確認
+
+---
+
+### 🎨 全シート見た目統一 & メニュー整理
+
+**ファイル**: `DataSync.js`, `Code.js`
+**追加日**: 2025-11-05
+**追加内容**: 全シート（メイン、工数、請求、マスタ）のデザインを統一し、カスタムメニューを整理
+**影響**: 統一感のある見た目で視認性が向上、メニューがシンプルになり使いやすさが向上
+
+#### 実装詳細
+
+**1. 統一デザイン仕様**
+
+全シート共通:
+- フォント: Arial 12pt
+- ヘッダー背景: #4f5459（グレー）
+- ヘッダー文字: #ffffff（白）、太字
+- 偶数行背景: #f0f5f5（薄い青緑）
+- 罫線: #cccccc（薄いグレー）
+
+**2. DataSync.js - formatBillingSheet()を修正 (476, 490, 501行目)**
+
+請求シートを標準デザインに統一:
+```javascript
+// ヘッダー背景: #1f4788（濃い青） → #4f5459（グレー）
+headerRange.setBackground('#4f5459')
+
+// フォントサイズ: 11 → 12
+dataRange.setFontFamily('Arial').setFontSize(12);
+
+// 偶数行背景: #f3f3f3（薄いグレー） → #f0f5f5（薄い青緑）
+billingSheet.getRange(i, 1, 1, 6).setBackground('#f0f5f5');
+```
+
+**3. Code.js - applyStandardFormattingToMasterSheets()を新規作成 (446-505行目)**
+
+4つのマスタシートに標準デザインを適用:
+- 進捗マスタ、担当者マスタ、作業区分マスタ、問い合わせマスタ
+- ヘッダー行（#4f5459背景、白文字、太字）
+- データ行（Arial 12pt、罫線、偶数行に#f0f5f5背景）
+
+```javascript
+function applyStandardFormattingToMasterSheets() {
+  const masterSheetNames = [
+    CONFIG.SHEETS.SHINCHOKU_MASTER,
+    CONFIG.SHEETS.TANTOUSHA_MASTER,
+    CONFIG.SHEETS.SAGYOU_KUBUN_MASTER,
+    CONFIG.SHEETS.TOIAWASE_MASTER
+  ];
+  // 各マスタシートに標準デザインを適用
+}
+```
+
+**4. Code.js - runAllManualMaintenance()を更新 (365-366行目)**
+
+「各種設定と書式を再適用」に追加:
+```javascript
+formatBillingSheet();  // 請求シートの書式設定を追加
+applyStandardFormattingToMasterSheets();  // マスタシートの書式設定を追加
+```
+
+**5. Code.js - onOpen()メニュー整理 (11-28行目)**
+
+**削除したメニュー項目（5つ）**:
+- ソートビューを全て削除（使用頻度低）
+- 請求シートを更新（不要）
+- 請求シートの見た目を整える（runAllMaintenanceに統合）
+- 週次バックアップを作成（Google Drive自動バージョン管理で代替可能）
+- スクリプトのキャッシュをクリア（開発者向け、一般ユーザー不要）
+
+**サブメニュー化**:
+```javascript
+.addSubMenu(ui.createMenu('工数シート表示設定')
+  .addItem('フィルタを有効化', 'enableFiltersOnAllInputSheets')
+  .addItem('先月・今月・来月のみ表示', 'showRecentThreeMonths')
+  .addItem('全ての月を表示', 'showAllMonths'))
+```
+
+**整理後のメニュー構成（11項目）**:
+1. ソートビューを作成
+2. 表示を更新
+3. ─────────
+4. 予定工数を一括同期
+5. 完了案件を請求シートに一括同期
+6. ─────────
+7. 全資料フォルダ作成
+8. ─────────
+9. **工数シート表示設定** ▶（サブメニュー）
+10. ─────────
+11. 各種設定と書式を再適用
+
+#### 使用方法
+
+**全シート書式を一括適用**:
+1. カスタムメニューから「各種設定と書式を再適用」を選択
+2. メイン、工数、請求、マスタの全シートが統一デザインで整形される
+
+#### テスト項目
+
+1. 「各種設定と書式を再適用」実行 → 全シートが統一デザインになることを確認
+2. 請求シートのヘッダーが#4f5459、偶数行が#f0f5f5になることを確認
+3. マスタシート（4つ）のヘッダーと偶数行が正しく設定されることを確認
+4. カスタムメニューが11項目、サブメニューが正しく表示されることを確認
+
+---
+
 ### ✨ 工数シートに備考列を追加
 
 **ファイル**: `Config.js`, `DataSync.js`

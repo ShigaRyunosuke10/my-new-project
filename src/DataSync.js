@@ -87,6 +87,8 @@ function syncMainToAllInputSheets() {
             value[mainIndices.SAGYOU_KUBUN - 1],
             value[mainIndices.KIBAN - 1],
             value[mainIndices.PROGRESS - 1] || "",
+            value[mainIndices.KIBAN_URL - 1] || "",      // 機番(リンク)
+            value[mainIndices.SERIES_URL - 1] || "",     // STD資料(リンク)
             "",  // 備考列（初期値は空）
             value[mainIndices.PLANNED_HOURS - 1],
           ]);

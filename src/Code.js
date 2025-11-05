@@ -354,6 +354,7 @@ function periodicMaintenance() {
 
 function runAllManualMaintenance() {
   SpreadsheetApp.getActiveSpreadsheet().toast('各種設定と書式を適用中...', '処理中', 3);
+  updateInputSheetHeaders();
   applyStandardFormattingToAllSheets();
   applyStandardFormattingToMainSheet();
   formatBillingSheet();
@@ -361,6 +362,36 @@ function runAllManualMaintenance() {
   colorizeAllSheets();
   setupAllDataValidations();
   SpreadsheetApp.getActiveSpreadsheet().toast('適用が完了しました。', '完了', 3);
+}
+
+/**
+ * 全工数シートのヘッダー行を最新のINPUT_SHEET_HEADERSに更新する
+ */
+function updateInputSheetHeaders() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const allSheets = ss.getSheets();
+  const headerValues = Object.values(INPUT_SHEET_HEADERS);
+
+  allSheets.forEach(sheet => {
+    const sheetName = sheet.getName();
+    if (sheetName.startsWith(CONFIG.SHEETS.INPUT_PREFIX)) {
+      try {
+        const currentLastCol = sheet.getLastColumn();
+        const requiredCols = headerValues.length;
+
+        // 必要に応じて列を追加
+        if (currentLastCol < requiredCols) {
+          sheet.insertColumnsAfter(currentLastCol, requiredCols - currentLastCol);
+        }
+
+        // ヘッダー行を更新
+        sheet.getRange(1, 1, 1, requiredCols).setValues([headerValues]);
+        Logger.log(`工数シート「${sheetName}」のヘッダーを更新しました。`);
+      } catch (e) {
+        Logger.log(`工数シート「${sheetName}」のヘッダー更新中にエラー: ${e.message}`);
+      }
+    }
+  });
 }
 
 function applyStandardFormattingToAllSheets() {

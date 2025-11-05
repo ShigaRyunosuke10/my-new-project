@@ -110,6 +110,10 @@ function bulkCreateMaterialFolders() {
           }
         }
       }
+
+      // 手順5: 工数シートにもリンクを同期
+      syncLinksToInputSheets_(mainSheet);
+
       ss.toast("資料フォルダの作成とリンク設定が完了しました。");
     } else {
       ss.toast("すべてのリンクは既に設定済みです。");
@@ -119,6 +123,98 @@ function bulkCreateMaterialFolders() {
     Logger.log(error.stack);
     ss.toast(`エラー: ${error.message}`);
   }
+}
+
+/**
+ * メインシートのリンク列を全工数シートに同期する内部関数
+ */
+function syncLinksToInputSheets_(mainSheet) {
+  const mainIndices = mainSheet.indices;
+  const mainData = mainSheet.sheet.getRange(
+    mainSheet.startRow, 1,
+    mainSheet.getLastRow() - mainSheet.startRow + 1,
+    mainSheet.getLastColumn()
+  ).getValues();
+
+  const mainFormulas = mainSheet.sheet.getRange(
+    mainSheet.startRow, 1,
+    mainSheet.getLastRow() - mainSheet.startRow + 1,
+    mainSheet.getLastColumn()
+  ).getFormulas();
+
+  // メインシートのデータをマップに変換 (key: 管理No_作業区分)
+  const mainLinksMap = new Map();
+  mainData.forEach((row, i) => {
+    const mgmtNo = row[mainIndices.MGMT_NO - 1];
+    const sagyouKubun = row[mainIndices.SAGYOU_KUBUN - 1];
+    if (!mgmtNo || !sagyouKubun) return;
+
+    const key = `${mgmtNo}_${sagyouKubun}`;
+    const kibanLink = mainFormulas[i][mainIndices.KIBAN_URL - 1] || row[mainIndices.KIBAN_URL - 1];
+    const seriesLink = mainFormulas[i][mainIndices.SERIES_URL - 1] || row[mainIndices.SERIES_URL - 1];
+
+    mainLinksMap.set(key, { kibanLink, seriesLink });
+  });
+
+  // 各工数シートを更新
+  const tantoushaList = mainSheet.getTantoushaList();
+  tantoushaList.forEach(tantousha => {
+    try {
+      const inputSheet = new InputSheet(tantousha.name);
+      const inputIndices = inputSheet.indices;
+
+      if (!inputIndices.KIBAN_URL || !inputIndices.SERIES_URL) {
+        Logger.log(`工数シート「${tantousha.name}」にリンク列が見つかりません。先にrunAllManualMaintenance()を実行してください。`);
+        return;
+      }
+
+      const lastRow = inputSheet.getLastRow();
+      if (lastRow < inputSheet.startRow) return;
+
+      const inputData = inputSheet.sheet.getRange(
+        inputSheet.startRow, 1,
+        lastRow - inputSheet.startRow + 1,
+        inputSheet.getLastColumn()
+      ).getValues();
+
+      // 工数シートの各行に対してリンクを更新
+      inputData.forEach((row, i) => {
+        const mgmtNo = row[inputIndices.MGMT_NO - 1];
+        const sagyouKubun = row[inputIndices.SAGYOU_KUBUN - 1];
+        if (!mgmtNo || !sagyouKubun) return;
+
+        const key = `${mgmtNo}_${sagyouKubun}`;
+        const links = mainLinksMap.get(key);
+        if (!links) return;
+
+        const rowNum = inputSheet.startRow + i;
+
+        // 機番リンクを設定
+        if (links.kibanLink) {
+          const kibanCell = inputSheet.sheet.getRange(rowNum, inputIndices.KIBAN_URL);
+          if (typeof links.kibanLink === 'string' && links.kibanLink.startsWith('=')) {
+            kibanCell.setFormula(links.kibanLink);
+          } else {
+            kibanCell.setValue(links.kibanLink);
+          }
+        }
+
+        // STD資料リンクを設定
+        if (links.seriesLink) {
+          const seriesCell = inputSheet.sheet.getRange(rowNum, inputIndices.SERIES_URL);
+          if (typeof links.seriesLink === 'string' && links.seriesLink.startsWith('=')) {
+            seriesCell.setFormula(links.seriesLink);
+          } else {
+            seriesCell.setValue(links.seriesLink);
+          }
+        }
+      });
+
+      Logger.log(`工数シート「${tantousha.name}」へのリンク同期が完了しました。`);
+    } catch (e) {
+      Logger.log(`工数シート「${tantousha.name}」へのリンク同期中にエラー: ${e.message}`);
+    }
+  });
 }
 
 /**

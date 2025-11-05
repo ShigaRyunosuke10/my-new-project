@@ -369,10 +369,7 @@ function runAllManualMaintenance() {
   colorizeAllSheets();
   setupAllDataValidations();
 
-  // 夜間自動リトライトリガーを設定（既存トリガーがある場合は再作成しない）
-  setupNightlyRetryTriggerIfNotExists();
-
-  SpreadsheetApp.getActiveSpreadsheet().toast('適用が完了しました（夜間自動リトライも設定済み）', '完了', 3);
+  SpreadsheetApp.getActiveSpreadsheet().toast('適用が完了しました。', '完了', 3);
 }
 
 /**

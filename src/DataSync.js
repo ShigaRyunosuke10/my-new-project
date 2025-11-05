@@ -159,6 +159,15 @@ function syncInputToMain(inputSheetName, editedRange) {
 
   const newRowData = targetValues.map((cellValue, i) => targetFormulas[i] || cellValue);
   
+  // 実工数を先に計算（請求シート同期で使用するため）
+  let totalHours = 0;
+  const dateStartCol = Object.keys(INPUT_SHEET_HEADERS).length + 1;
+  if (inputSheet.getLastColumn() >= dateStartCol) {
+    const hoursValues = inputSheet.sheet.getRange(editedRow, dateStartCol, 1, inputSheet.getLastColumn() - dateStartCol + 1).getValues()[0];
+    totalHours = hoursValues.reduce((sum, h) => sum + toNumber(h), 0);
+  }
+  newRowData[mainIndices.ACTUAL_HOURS - 1] = totalHours;
+
   if (editedCol === inputIndices.PROGRESS) {
     const newProgress = editedRowValues[inputIndices.PROGRESS - 1];
     newRowData[mainIndices.PROGRESS - 1] = newProgress;
@@ -168,21 +177,19 @@ function syncInputToMain(inputSheetName, editedRange) {
     if (!isValidDate(newRowData[mainIndices.START_DATE - 1]) && startDateTriggers.includes(newProgress)) {
       newRowData[mainIndices.START_DATE - 1] = new Date();
     }
-    
+
     if (completionTriggers.includes(newProgress)) {
-      newRowData[mainIndices.COMPLETE_DATE - 1] = new Date();
+      const completeDate = new Date();
+      newRowData[mainIndices.COMPLETE_DATE - 1] = completeDate;
+
+      // 請求シートへの同期（工数シートから進捗を完了状態に変更した場合）
+      const kiban = targetValues[mainIndices.KIBAN - 1];
+      const plannedHours = targetValues[mainIndices.PLANNED_HOURS - 1];
+      syncCompletedToBillingSheet(mgmtNo, sagyouKubun, kiban, plannedHours, totalHours, completeDate);
     } else {
       newRowData[mainIndices.COMPLETE_DATE - 1] = '';
     }
   }
-
-  let totalHours = 0;
-  const dateStartCol = Object.keys(INPUT_SHEET_HEADERS).length + 1;
-  if (inputSheet.getLastColumn() >= dateStartCol) {
-    const hoursValues = inputSheet.sheet.getRange(editedRow, dateStartCol, 1, inputSheet.getLastColumn() - dateStartCol + 1).getValues()[0];
-    totalHours = hoursValues.reduce((sum, h) => sum + toNumber(h), 0);
-  }
-  newRowData[mainIndices.ACTUAL_HOURS - 1] = totalHours;
   newRowData[mainIndices.PROGRESS_EDITOR - 1] = tantoushaName;
   newRowData[mainIndices.UPDATE_TS - 1] = new Date();
 

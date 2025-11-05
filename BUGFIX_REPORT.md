@@ -8,6 +8,55 @@
 
 ## 🆕 機能追加 (2025-11-05)
 
+### ✨ 工数シートからの進捗変更時に請求シートへ自動同期
+
+**ファイル**: `DataSync.js`
+**追加日**: 2025-11-05
+**追加内容**: 工数シートで進捗を完了状態に変更したときに、請求シートにも自動同期
+**影響**: 工数シートからの進捗変更でも請求シートが自動更新され、データの一貫性が向上
+
+#### 問題
+以前の実装では、工数シートで進捗を完了状態に変更しても請求シートに同期されなかった：
+- 工数シート → メインシートへの同期は行われる
+- メインシートの完了日は自動入力される
+- しかし `setValue()` で書き込まれるためonEditトリガーが発火しない
+- 結果：請求シートには同期されない
+
+#### 実装詳細
+
+**DataSync.js - syncInputToMain()関数を修正 (162-192行目)**
+```javascript
+// 実工数を先に計算（請求シート同期で使用するため）
+let totalHours = 0;
+// ... 実工数計算処理
+
+if (editedCol === inputIndices.PROGRESS) {
+  if (completionTriggers.includes(newProgress)) {
+    const completeDate = new Date();
+    newRowData[mainIndices.COMPLETE_DATE - 1] = completeDate;
+
+    // 請求シートへの同期（工数シートから進捗を完了状態に変更した場合）
+    const kiban = targetValues[mainIndices.KIBAN - 1];
+    const plannedHours = targetValues[mainIndices.PLANNED_HOURS - 1];
+    syncCompletedToBillingSheet(mgmtNo, sagyouKubun, kiban, plannedHours, totalHours, completeDate);
+  }
+}
+```
+
+#### 動作仕様
+
+- **同期タイミング**: 工数シートで進捗を完了トリガー状態（「完了」「検図完了」など）に変更したとき
+- **同期内容**: 管理No、委託業務内容、作業区分、予定工数、実工数、完了月
+- **実工数**: 工数シートの日付列の合計値が反映される
+
+#### テスト項目
+
+1. 工数シートで進捗を「完了」に変更 → メインシートと請求シートの両方が更新されることを確認
+2. 実工数が正しく請求シートに反映されることを確認
+3. 完了月（YYYY-MM形式）が正しく設定されることを確認
+
+---
+
 ### ✨ 予定工数の一括同期機能（カスタムメニュー）
 
 **ファイル**: `DataSync.js`, `Code.js`

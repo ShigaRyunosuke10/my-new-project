@@ -372,6 +372,9 @@ function updateInputSheetHeaders() {
   const allSheets = ss.getSheets();
   const headerValues = Object.values(INPUT_SHEET_HEADERS);
 
+  // キャッシュをクリアして最新のヘッダー構造を反映させる
+  const cache = CacheService.getScriptCache();
+
   allSheets.forEach(sheet => {
     const sheetName = sheet.getName();
     if (sheetName.startsWith(CONFIG.SHEETS.INPUT_PREFIX)) {
@@ -386,6 +389,11 @@ function updateInputSheetHeaders() {
 
         // ヘッダー行を更新
         sheet.getRange(1, 1, 1, requiredCols).setValues([headerValues]);
+
+        // このシートのキャッシュをクリア
+        const cacheKey = `col_indices_${sheet.getSheetId()}`;
+        cache.remove(cacheKey);
+
         Logger.log(`工数シート「${sheetName}」のヘッダーを更新しました。`);
       } catch (e) {
         Logger.log(`工数シート「${sheetName}」のヘッダー更新中にエラー: ${e.message}`);

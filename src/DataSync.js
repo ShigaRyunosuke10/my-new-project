@@ -284,6 +284,47 @@ function syncPlannedHoursToInputSheets(editedRow) {
 }
 
 // =================================================================================
+// === 予定工数の一括同期処理 ===
+// =================================================================================
+/**
+ * メインシート全体の予定工数を全工数シートに一括同期します（カスタムメニューから実行）
+ * 一斉入力時など、onEditトリガーで処理されない複数セル編集後に使用します。
+ */
+function syncAllPlannedHoursToInputSheets() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const mainSheet = new MainSheet();
+
+  ss.toast('予定工数の一括同期を開始します...', '処理中', 3);
+
+  // メインシートのデータ行数を取得
+  const lastRow = mainSheet.getLastRow();
+  if (lastRow < mainSheet.startRow) {
+    ss.toast('同期対象のデータがありません。', '完了', 3);
+    return;
+  }
+
+  let totalProcessed = 0;
+
+  // メインシートの各行をループして予定工数を同期
+  for (let rowNum = mainSheet.startRow; rowNum <= lastRow; rowNum++) {
+    try {
+      // 既存の単一行同期関数を再利用
+      syncPlannedHoursToInputSheets(rowNum);
+      totalProcessed++;
+    } catch (e) {
+      Logger.log(`行${rowNum}の予定工数同期中にエラー: ${e.message}`);
+    }
+  }
+
+  // 色付け処理を実行
+  colorizeAllSheets();
+
+  // 完了通知
+  ss.toast(`${totalProcessed}行の予定工数を全工数シートに同期しました。`, '同期完了', 5);
+  Logger.log(`予定工数一括同期完了: ${totalProcessed}行を処理しました`);
+}
+
+// =================================================================================
 // === 完了案件の請求シート同期処理 ===
 // =================================================================================
 /**

@@ -146,6 +146,28 @@ function getStartDateTriggerStatuses() {
   return triggerStatuses;
 }
 
+/**
+ * 進捗マスタから「請求書トリガー」がTRUEのステータスリストを取得します。
+ */
+function getBillingTriggerStatuses() {
+  const cache = CacheService.getScriptCache();
+  const cacheKey = 'billing_trigger_statuses';
+  const cached = cache.get(cacheKey);
+  if (cached) {
+    return JSON.parse(cached);
+  }
+
+  const masterData = getMasterData(CONFIG.SHEETS.SHINCHOKU_MASTER, 5);
+  // 5列目まで取得
+  const triggerStatuses = masterData
+    .filter(row => row[4] === true) // 請求書トリガー（5列目）がTRUEの行をフィルタリング
+    .map(row => row[0]);
+  // 進捗名（1列目）だけを抽出
+
+  cache.put(cacheKey, JSON.stringify(triggerStatuses), 3600); // 1時間キャッシュ
+  return triggerStatuses;
+}
+
 
 // getTantoushaNameByEmail() - 削除（未使用のため）
 // 将来的に必要な場合は以下の実装を参照：

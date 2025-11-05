@@ -8,6 +8,156 @@
 
 ## 🆕 機能追加 (2025-11-05)
 
+### ✨ 工数シートに備考列を追加
+
+**ファイル**: `Config.js`, `DataSync.js`
+**追加日**: 2025-11-05
+**追加内容**: 工数シート（INPUT_SHEET）の進捗列の右に「備考」列を追加
+**影響**: ユーザーが各案件に備考を記入できるようになり、情報管理が向上
+
+#### 実装詳細
+
+**1. Config.js - INPUT_SHEET_HEADERSに備考列を追加 (54行目)**
+```javascript
+const INPUT_SHEET_HEADERS = {
+  MGMT_NO: "管理No", SAGYOU_KUBUN: "作業区分", KIBAN: "機番", PROGRESS: "進捗", REMARKS: "備考",
+  PLANNED_HOURS:"予定工数", ACTUAL_HOURS_SUM: "実績工数合計", SEPARATOR: "",
+};
+```
+
+**2. DataSync.js - 新規行追加時に備考列を含める (85-92行目)**
+```javascript
+rowsToAdd.push([
+  value[mainIndices.MGMT_NO - 1],
+  value[mainIndices.SAGYOU_KUBUN - 1],
+  value[mainIndices.KIBAN - 1],
+  value[mainIndices.PROGRESS - 1] || "",
+  "",  // 備考列（初期値は空）
+  value[mainIndices.PLANNED_HOURS - 1],
+]);
+```
+
+#### 列構造の変更
+
+**変更前**:
+- 列1-4: 管理No、作業区分、機番、進捗
+- 列5-7: 予定工数、実績工数合計、区切り
+- 列8～: 日付列（工数入力欄）
+
+**変更後**:
+- 列1-5: 管理No、作業区分、機番、進捗、**備考**
+- 列6-8: 予定工数、実績工数合計、区切り
+- 列9～: 日付列（工数入力欄）← 自動的に1列ずれる
+
+#### 自動対応される処理
+
+- 実工数の計算（dateStartColが自動更新）
+- SUM式の範囲（dateStartColが自動更新）
+- 日付列の書式設定（SEPARATOR基準で動的計算）
+- データ書き込み（dateStartColが自動更新）
+- 月フィルタリング（日付型チェックで動的判定）
+
+#### テスト項目
+
+1. 新規行追加時、工数シートに備考列が含まれることを確認
+2. 実工数の計算が正しく動作することを確認（日付列から正しく合計）
+3. 月フィルタリングが正しく動作することを確認
+
+---
+
+### ✨ 請求書トリガー機能を実装
+
+**ファイル**: `Utils.js`, `DataSync.js`
+**追加日**: 2025-11-05
+**追加内容**: 進捗マスタの「請求書トリガー」列から請求対象ステータスを動的に取得し、請求書シートへの同期を制御
+**影響**: 「日精済」は請求対象外、「日精済(作業あり)」は請求対象など、細かい制御が可能に
+
+#### 実装詳細
+
+**1. Utils.js - getBillingTriggerStatuses()関数を追加 (149-169行目)**
+```javascript
+/**
+ * 進捗マスタから「請求書トリガー」がTRUEのステータスリストを取得します。
+ */
+function getBillingTriggerStatuses() {
+  const cache = CacheService.getScriptCache();
+  const cacheKey = 'billing_trigger_statuses';
+  const cached = cache.get(cacheKey);
+  if (cached) {
+    return JSON.parse(cached);
+  }
+
+  const masterData = getMasterData(CONFIG.SHEETS.SHINCHOKU_MASTER, 5);
+  // 5列目まで取得
+  const triggerStatuses = masterData
+    .filter(row => row[4] === true) // 請求書トリガー（5列目）がTRUEの行をフィルタリング
+    .map(row => row[0]);
+  // 進捗名（1列目）だけを抽出
+
+  cache.put(cacheKey, JSON.stringify(triggerStatuses), 3600); // 1時間キャッシュ
+  return triggerStatuses;
+}
+```
+
+**2. DataSync.js - syncCompletedToBillingSheet()に進捗チェックを追加 (530, 548-553行目)**
+```javascript
+// 関数シグネチャに進捗ステータスを追加
+function syncCompletedToBillingSheet(mgmtNo, sagyouKubun, kiban, plannedHours, actualHours, completeDate, progress) {
+  // ...
+
+  // 請求書トリガーステータスでない場合はスキップ
+  const billingTriggers = getBillingTriggerStatuses();
+  if (!billingTriggers.includes(progress)) {
+    Logger.log(`進捗「${progress}」は請求書トリガー対象外のため、同期をスキップしました`);
+    return;
+  }
+  // ...
+}
+```
+
+**3. DataSync.js - 呼び出し元を修正**
+
+a) **syncInputToMain() (189行目)**
+```javascript
+syncCompletedToBillingSheet(mgmtNo, sagyouKubun, kiban, plannedHours, totalHours, completeDate, newProgress);
+```
+
+b) **syncAllCompletedToBillingSheet() (435, 437行目)**
+```javascript
+const progress = row[mainIndices.PROGRESS - 1];
+syncCompletedToBillingSheet(mgmtNo, sagyouKubun, kiban, plannedHours, actualHours, new Date(completeDate), progress);
+```
+
+#### 進捗マスタの設定例
+
+| 進捗ステータス | 請求書トリガー | 説明 |
+|-------------|------------|------|
+| 未着手 | FALSE | 請求対象外 |
+| 配置済 | FALSE | 請求対象外 |
+| ACS済 | TRUE | 請求対象 |
+| 日精済 | FALSE | 追加作業なし、請求対象外 |
+| 日精済(作業あり) | TRUE | 追加作業あり、請求対象 |
+| 機番重複 | FALSE | 請求対象外 |
+| 仕掛かり中 | FALSE | 請求対象外 |
+| 保留 | FALSE | 請求対象外 |
+
+#### 動作仕様
+
+- **同期タイミング**: 完了日が入力されたとき（自動または手動）
+- **同期条件**:
+  1. 管理Noと作業区分が両方とも存在
+  2. 進捗ステータスが請求書トリガー対象（進捗マスタで定義）
+- **スキップ時のログ**: 「進捗「日精済」は請求書トリガー対象外のため、同期をスキップしました」
+
+#### テスト項目
+
+1. 「日精済」に進捗変更 → 請求書シートに同期されないことを確認
+2. 「日精済(作業あり)」に進捗変更 → 請求書シートに同期されることを確認
+3. 「ACS済」に進捗変更 → 請求書シートに同期されることを確認
+4. ログに適切なメッセージが出力されることを確認
+
+---
+
 ### ⚡ 予定工数一括同期のパフォーマンス最適化
 
 **ファイル**: `DataSync.js`

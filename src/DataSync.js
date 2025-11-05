@@ -87,6 +87,7 @@ function syncMainToAllInputSheets() {
             value[mainIndices.SAGYOU_KUBUN - 1],
             value[mainIndices.KIBAN - 1],
             value[mainIndices.PROGRESS - 1] || "",
+            "",  // 備考列（初期値は空）
             value[mainIndices.PLANNED_HOURS - 1],
           ]);
         }
@@ -185,7 +186,7 @@ function syncInputToMain(inputSheetName, editedRange) {
       // 請求シートへの同期（工数シートから進捗を完了状態に変更した場合）
       const kiban = targetValues[mainIndices.KIBAN - 1];
       const plannedHours = targetValues[mainIndices.PLANNED_HOURS - 1];
-      syncCompletedToBillingSheet(mgmtNo, sagyouKubun, kiban, plannedHours, totalHours, completeDate);
+      syncCompletedToBillingSheet(mgmtNo, sagyouKubun, kiban, plannedHours, totalHours, completeDate, newProgress);
     } else {
       newRowData[mainIndices.COMPLETE_DATE - 1] = '';
     }
@@ -431,8 +432,9 @@ function syncAllCompletedToBillingSheet() {
         const kiban = row[mainIndices.KIBAN - 1];
         const plannedHours = row[mainIndices.PLANNED_HOURS - 1];
         const actualHours = row[mainIndices.ACTUAL_HOURS - 1];
+        const progress = row[mainIndices.PROGRESS - 1];
 
-        syncCompletedToBillingSheet(mgmtNo, sagyouKubun, kiban, plannedHours, actualHours, new Date(completeDate));
+        syncCompletedToBillingSheet(mgmtNo, sagyouKubun, kiban, plannedHours, actualHours, new Date(completeDate), progress);
         syncCount++;
       }
     } catch (e) {
@@ -524,8 +526,9 @@ function formatBillingSheet() {
  * @param {number} plannedHours - 予定工数
  * @param {number} actualHours - 実工数
  * @param {Date} completeDate - 完了日
+ * @param {string} progress - 進捗ステータス
  */
-function syncCompletedToBillingSheet(mgmtNo, sagyouKubun, kiban, plannedHours, actualHours, completeDate) {
+function syncCompletedToBillingSheet(mgmtNo, sagyouKubun, kiban, plannedHours, actualHours, completeDate, progress) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let billingSheet = ss.getSheetByName(CONFIG.SHEETS.BILLING);
 
@@ -540,6 +543,13 @@ function syncCompletedToBillingSheet(mgmtNo, sagyouKubun, kiban, plannedHours, a
   // 管理Noまたは作業区分が空の場合はスキップ
   if (!mgmtNo || !sagyouKubun) {
     Logger.log('管理Noまたは作業区分が空のため、請求シートへの同期をスキップしました');
+    return;
+  }
+
+  // 請求書トリガーステータスでない場合はスキップ
+  const billingTriggers = getBillingTriggerStatuses();
+  if (!billingTriggers.includes(progress)) {
+    Logger.log(`進捗「${progress}」は請求書トリガー対象外のため、同期をスキップしました`);
     return;
   }
 

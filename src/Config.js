@@ -51,7 +51,7 @@ const MAIN_SHEET_HEADERS = {
 };
 
 const INPUT_SHEET_HEADERS = {
-  MGMT_NO: "管理No", SAGYOU_KUBUN: "作業区分", KIBAN: "機番", PROGRESS: "進捗",
+  MGMT_NO: "管理No", SAGYOU_KUBUN: "作業区分", KIBAN: "機番", PROGRESS: "進捗", REMARKS: "備考",
   PLANNED_HOURS:"予定工数", ACTUAL_HOURS_SUM: "実績工数合計", SEPARATOR: "",
 };
 

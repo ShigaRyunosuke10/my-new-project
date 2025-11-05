@@ -342,15 +342,16 @@ function syncAllPlannedHoursToInputSheets() {
   });
 
   let totalUpdated = 0;
+  const failedSheets = [];
 
-  // 3. 担当者ごとに工数シートを処理
+  // 3. 担当者ごとに工数シートを処理（リトライ機構付き）
   for (const [tantoushaName, plannedHoursMap] of validRows.entries()) {
-    try {
+    const result = retrySync(() => {
       const inputSheet = new InputSheet(tantoushaName);
 
       // 工数シートにデータが存在するかチェック
       if (inputSheet.getLastRow() < inputSheet.startRow) {
-        continue;
+        return { skipped: true };
       }
 
       // 工数シートの全データを一度に取得
@@ -383,19 +384,33 @@ function syncAllPlannedHoursToInputSheets() {
       // まとめて更新
       updates.forEach(update => {
         inputSheet.sheet.getRange(update.row, inputSheet.indices.PLANNED_HOURS).setValue(update.value);
-        totalUpdated++;
       });
 
       Logger.log(`${tantoushaName} の工数シート: ${updates.length}件を更新`);
+      return { skipped: false, updateCount: updates.length };
 
-    } catch (e) {
-      Logger.log(`${tantoushaName} の工数シートへの一括同期中にエラー: ${e.message}`);
+    }, 3, `${tantoushaName} の工数シートへの予定工数同期`);
+
+    if (result.success && !result.result.skipped) {
+      totalUpdated += result.result.updateCount;
+    } else if (!result.success) {
+      failedSheets.push(tantoushaName);
     }
   }
 
   // 完了通知
-  ss.toast(`${totalUpdated}件の予定工数を工数シートに同期しました。`, '同期完了', 5);
-  Logger.log(`予定工数一括同期完了: ${totalUpdated}件を更新しました`);
+  if (failedSheets.length > 0) {
+    const failedList = failedSheets.join(', ');
+    ss.toast(
+      `予定工数同期: ${totalUpdated}件を更新、${failedSheets.length}件の工数シートで失敗\n失敗: ${failedList}`,
+      '同期完了（一部失敗）',
+      10
+    );
+    Logger.log(`予定工数一括同期完了: ${totalUpdated}件を更新、失敗: ${failedList}`);
+  } else {
+    ss.toast(`${totalUpdated}件の予定工数を工数シートに同期しました。`, '同期完了', 5);
+    Logger.log(`予定工数一括同期完了: ${totalUpdated}件を更新しました`);
+  }
 }
 
 // =================================================================================

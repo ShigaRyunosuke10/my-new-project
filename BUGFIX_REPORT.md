@@ -8,6 +8,192 @@
 
 ## 🆕 機能追加 (2025-11-05)
 
+### 🛡️ 同期処理全体のリトライ機構と夜間自動リトライ
+
+**ファイル**: `SyncRetry.js`（新規）, `DriveIntegration.js`, `DataSync.js`, `Code.js`
+**追加日**: 2025-11-05
+**追加内容**: すべての同期処理に統一的なリトライ機構を実装し、失敗した同期を自動的に再試行できるようにする
+**影響**: 一時的なエラー（ネットワーク、ロック競合）による同期失敗を自動回復し、夜間に自動的に再実行できる
+
+#### 実装詳細
+
+**1. SyncRetry.js - 統一的なリトライ機構を新規作成**
+
+```javascript
+/**
+ * 任意の同期関数を最大回数までリトライ実行します。
+ */
+function retrySync(fn, maxRetries = 3, description = '同期処理', waitMs = 1000) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const result = fn();
+      return { success: true, result: result, error: null };
+    } catch (e) {
+      if (attempt < maxRetries) {
+        Utilities.sleep(waitMs);
+      } else {
+        logSyncFailure_(description, e.message);
+        return { success: false, result: null, error: e };
+      }
+    }
+  }
+}
+```
+
+**機能**:
+- 最大3回まで自動リトライ
+- リトライ間隔: 1秒（デフォルト）
+- 失敗ログを自動的にキャッシュに記録
+- 失敗履歴は24時間保持
+
+**2. SyncRetry.js - 夜間自動リトライ機能を追加**
+
+```javascript
+/**
+ * 失敗した同期を再実行します（カスタムメニューまたは夜間トリガーから実行）
+ */
+function retryAllFailedSyncs() {
+  // 1. リンク同期を再実行
+  const mainSheet = new MainSheet();
+  syncLinksToInputSheets_(mainSheet);
+
+  // 2. 予定工数同期を再実行
+  syncAllPlannedHoursToInputSheets();
+
+  // 3. 完了案件同期を再実行
+  syncAllCompletedToBillingSheet();
+}
+
+/**
+ * 夜間自動リトライのトリガーを設定します（毎日午前2時）
+ */
+function setupNightlyRetryTrigger() {
+  ScriptApp.newTrigger('retryAllFailedSyncs')
+    .timeBased()
+    .atHour(2)
+    .everyDays(1)
+    .create();
+}
+```
+
+**機能**:
+- 夜間（午前2時）に自動的に失敗した同期を再実行
+- カスタムメニューから手動で設定/解除可能
+- 再実行結果を通知（成功・失敗件数）
+
+**3. DriveIntegration.js - syncLinksToInputSheets_() にリトライ追加**
+
+```javascript
+tantoushaList.forEach(tantousha => {
+  const result = retrySync(() => {
+    // 既存のリンク同期処理
+    const inputSheet = new InputSheet(tantousha.name);
+    // ...リンク設定処理...
+    return { skipped: false, updatedCount };
+  }, 3, `工数シート「${tantousha.name}」へのリンク同期`);
+
+  if (result.success) {
+    successCount++;
+  } else {
+    failedSheets.push(tantousha.name);
+  }
+});
+
+// 結果を通知
+if (failedSheets.length > 0) {
+  ss.toast(
+    `リンク同期: 成功${successCount}件、失敗${failedSheets.length}件\n失敗: ${failedList}`,
+    '同期完了（一部失敗）',
+    10
+  );
+}
+```
+
+**改善点**:
+- 各工数シートごとに3回までリトライ
+- 失敗した工数シート名を通知
+- 失敗ログを自動記録
+
+**4. DataSync.js - syncAllPlannedHoursToInputSheets() にリトライ追加**
+
+```javascript
+for (const [tantoushaName, plannedHoursMap] of validRows.entries()) {
+  const result = retrySync(() => {
+    const inputSheet = new InputSheet(tantoushaName);
+    // ...予定工数更新処理...
+    return { skipped: false, updateCount: updates.length };
+  }, 3, `${tantoushaName} の工数シートへの予定工数同期`);
+
+  if (result.success && !result.result.skipped) {
+    totalUpdated += result.result.updateCount;
+  } else if (!result.success) {
+    failedSheets.push(tantoushaName);
+  }
+}
+```
+
+**改善点**:
+- 担当者ごとに3回までリトライ
+- 失敗した担当者を通知
+
+**5. Code.js - カスタムメニューに「同期失敗対策」サブメニューを追加**
+
+```javascript
+.addSubMenu(ui.createMenu('同期失敗対策')
+  .addItem('失敗した同期を再実行', 'retryAllFailedSyncs')
+  .addItem('同期失敗履歴を表示', 'showSyncFailures')
+  .addItem('同期失敗履歴をクリア', 'clearSyncFailureLog')
+  .addSeparator()
+  .addItem('夜間自動リトライを設定（毎日午前2時）', 'setupNightlyRetryTrigger')
+  .addItem('夜間自動リトライを解除', 'removeNightlyRetryTrigger'))
+```
+
+**メニュー項目**:
+- 失敗した同期を再実行 - 手動で全同期を再実行
+- 同期失敗履歴を表示 - 最新5件の失敗を表示
+- 同期失敗履歴をクリア - 失敗履歴を削除
+- 夜間自動リトライを設定 - 毎日午前2時に自動実行
+- 夜間自動リトライを解除 - 自動実行を停止
+
+**6. Code.js - ロック待機時間を30秒に延長**
+
+```javascript
+function onEdit(e) {
+  const lock = LockService.getScriptLock();
+  // ロック待機時間を30秒に延長（複数ユーザーの同時編集・一括同期処理に対応）
+  lock.waitLock(30000);
+}
+```
+
+**改善点**:
+- 5秒→30秒に延長
+- 一括同期処理中の編集をブロックしない
+- 複数ユーザーの同時編集に対応
+
+#### 使用方法
+
+**手動で失敗同期を再実行**:
+1. カスタムメニュー →「同期失敗対策」→「失敗した同期を再実行」
+2. リンク同期、予定工数同期、完了案件同期を順番に再実行
+
+**夜間自動リトライを設定**:
+1. カスタムメニュー →「同期失敗対策」→「夜間自動リトライを設定（毎日午前2時）」
+2. 毎日午前2時に自動的に失敗した同期を再実行
+
+**失敗履歴を確認**:
+1. カスタムメニュー →「同期失敗対策」→「同期失敗履歴を表示」
+2. 最新5件の失敗を確認
+
+#### テスト項目
+
+1. リンク同期を実行 → 一時的なエラーで失敗 → 自動リトライで成功することを確認
+2. 失敗した同期を再実行 → 全同期が順番に実行されることを確認
+3. 夜間自動リトライを設定 → トリガーが作成されることを確認（Apps Script → トリガー）
+4. 同期失敗履歴を表示 → 失敗した同期が表示されることを確認
+5. 複数ユーザーが同時編集 → 30秒のロック待機で処理されることを確認
+
+---
+
 ### 🐛 キャッシュクリア処理を追加
 
 **ファイル**: `Code.js`

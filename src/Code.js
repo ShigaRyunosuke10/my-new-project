@@ -24,6 +24,14 @@ function onOpen(e) {
       .addItem('先月・今月・来月のみ表示', 'showRecentThreeMonths')
       .addItem('全ての月を表示', 'showAllMonths'))
     .addSeparator()
+    .addSubMenu(ui.createMenu('同期失敗対策')
+      .addItem('失敗した同期を再実行', 'retryAllFailedSyncs')
+      .addItem('同期失敗履歴を表示', 'showSyncFailures')
+      .addItem('同期失敗履歴をクリア', 'clearSyncFailureLog')
+      .addSeparator()
+      .addItem('夜間自動リトライを設定（毎日午前2時）', 'setupNightlyRetryTrigger')
+      .addItem('夜間自動リトライを解除', 'removeNightlyRetryTrigger'))
+    .addSeparator()
     .addItem('各種設定と書式を再適用', 'runAllManualMaintenance')
     .addToUi();
 }
@@ -35,9 +43,11 @@ function onEdit(e) {
   if (!e || !e.source || !e.range) return;
   const lock = LockService.getScriptLock();
   try {
-    lock.waitLock(5000);  // 30秒→5秒に短縮（複数ユーザー同時編集時の応答性向上） 
+    // ロック待機時間を30秒に延長（複数ユーザーの同時編集・一括同期処理に対応）
+    lock.waitLock(30000);
   } catch (err) {
     Logger.log('ロックの待機中にタイムアウトしました。');
+    SpreadsheetApp.getActiveSpreadsheet().toast('他の処理が実行中のため、タイムアウトしました。しばらく待ってから再試行してください。', '処理待機タイムアウト', 5);
     return;
   }
   

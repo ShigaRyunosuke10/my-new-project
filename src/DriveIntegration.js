@@ -156,26 +156,36 @@ function syncLinksToInputSheets_(mainSheet) {
     mainLinksMap.set(key, { kibanLink, seriesLink });
   });
 
-  // 各工数シートを更新
+  // 各工数シートを更新（リトライ機構付き）
   const tantoushaList = mainSheet.getTantoushaList();
+  const failedSheets = [];
+  let successCount = 0;
+  let skipCount = 0;
+
   tantoushaList.forEach(tantousha => {
-    try {
+    const result = retrySync(() => {
       const inputSheet = new InputSheet(tantousha.name);
       const inputIndices = inputSheet.indices;
 
       if (!inputIndices.KIBAN_URL || !inputIndices.SERIES_URL) {
         Logger.log(`工数シート「${tantousha.name}」にリンク列が見つかりません。先にrunAllManualMaintenance()を実行してください。`);
-        return;
+        skipCount++;
+        return { skipped: true };
       }
 
       const lastRow = inputSheet.getLastRow();
-      if (lastRow < inputSheet.startRow) return;
+      if (lastRow < inputSheet.startRow) {
+        skipCount++;
+        return { skipped: true };
+      }
 
       const inputData = inputSheet.sheet.getRange(
         inputSheet.startRow, 1,
         lastRow - inputSheet.startRow + 1,
         inputSheet.getLastColumn()
       ).getValues();
+
+      let updatedCount = 0;
 
       // 工数シートの各行に対してリンクを更新
       inputData.forEach((row, i) => {
@@ -206,6 +216,7 @@ function syncLinksToInputSheets_(mainSheet) {
           } else {
             kibanCell.setValue(links.kibanLink);
           }
+          updatedCount++;
         }
 
         // STD資料リンクを設定（空の場合のみ）
@@ -216,14 +227,37 @@ function syncLinksToInputSheets_(mainSheet) {
           } else {
             seriesCell.setValue(links.seriesLink);
           }
+          updatedCount++;
         }
       });
 
-      Logger.log(`工数シート「${tantousha.name}」へのリンク同期が完了しました。`);
-    } catch (e) {
-      Logger.log(`工数シート「${tantousha.name}」へのリンク同期中にエラー: ${e.message}`);
+      Logger.log(`工数シート「${tantousha.name}」: ${updatedCount}件のリンクを更新しました`);
+      return { skipped: false, updatedCount };
+
+    }, 3, `工数シート「${tantousha.name}」へのリンク同期`);
+
+    if (result.success) {
+      if (!result.result.skipped) {
+        successCount++;
+      }
+    } else {
+      failedSheets.push(tantousha.name);
     }
   });
+
+  // 結果を通知
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (failedSheets.length > 0) {
+    const failedList = failedSheets.join(', ');
+    ss.toast(
+      `リンク同期: 成功${successCount}件、スキップ${skipCount}件、失敗${failedSheets.length}件\n失敗: ${failedList}`,
+      '同期完了（一部失敗）',
+      10
+    );
+    Logger.log(`リンク同期完了: 成功${successCount}件、スキップ${skipCount}件、失敗${failedSheets.length}件 (${failedList})`);
+  } else {
+    Logger.log(`リンク同期完了: 成功${successCount}件、スキップ${skipCount}件`);
+  }
 }
 
 /**

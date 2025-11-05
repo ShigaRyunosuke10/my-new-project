@@ -251,11 +251,6 @@ function ensureCurrentMonthComplete() {
           }
         }
 
-        if (currentMonthDates.length === 0) {
-          Logger.log(`シート「${sheet.getName()}」に今月のカレンダーが存在しません。スキップします。`);
-          return;
-        }
-
         // 欠けている日付を特定
         const missingDays = [];
         for (let day = 1; day <= daysInMonth; day++) {
@@ -269,9 +264,17 @@ function ensureCurrentMonthComplete() {
           return;
         }
 
-        // 最後の今月日付の次の列位置を特定
-        const lastCurrentMonthCol = Math.max(...currentMonthColumns);
-        const insertCol = lastCurrentMonthCol + 1;
+        // 挿入位置を決定
+        let insertCol;
+        if (currentMonthDates.length === 0) {
+          // 今月のカレンダーが全くない場合は、最終列の次に追加
+          Logger.log(`シート「${sheet.getName()}」に今月のカレンダーが存在しないため、全ての日付を作成します。`);
+          insertCol = lastCol + 1;
+        } else {
+          // 今月の日付が一部存在する場合は、最後の今月日付の次に追加
+          const lastCurrentMonthCol = Math.max(...currentMonthColumns);
+          insertCol = lastCurrentMonthCol + 1;
+        }
 
         // 欠けている日付を追加
         const newDateHeaders = [];
@@ -305,6 +308,18 @@ function ensureCurrentMonthComplete() {
         }
 
         sheet.setConditionalFormatRules(rules);
+
+        // 追加した日付列に書式を適用（緑線ボーダー、右揃えなど）
+        const lastRow = sheet.getLastRow();
+        if (lastRow > 2) {
+          const newDataRange = sheet.getRange(3, insertCol, lastRow - 2, missingDays.length);
+          newDataRange
+            .setBorder(true, true, true, true, true, true, "#cccccc", SpreadsheetApp.BorderStyle.SOLID)
+            .setHorizontalAlignment("right")
+            .setVerticalAlignment("middle")
+            .setFontFamily("Arial")
+            .setFontSize(12);
+        }
 
         Logger.log(`シート「${sheet.getName()}」に今月の欠けている日付（${missingDays.join(', ')}日）を追加しました。`);
 

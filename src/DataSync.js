@@ -332,6 +332,124 @@ function syncAllPlannedHoursToInputSheets() {
 }
 
 // =================================================================================
+// === 完了案件の一括同期処理 ===
+// =================================================================================
+/**
+ * メインシート全体から完了日が入力済みの案件を請求シートに一括同期します（カスタムメニューから実行）
+ */
+function syncAllCompletedToBillingSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const mainSheet = new MainSheet();
+  const mainIndices = mainSheet.indices;
+
+  ss.toast('完了案件の一括同期を開始します...', '処理中', 3);
+
+  // メインシートのデータ行数を取得
+  const lastRow = mainSheet.getLastRow();
+  if (lastRow < mainSheet.startRow) {
+    ss.toast('同期対象のデータがありません。', '完了', 3);
+    return;
+  }
+
+  // メインシートの全データを取得
+  const mainData = mainSheet.sheet.getRange(mainSheet.startRow, 1, lastRow - mainSheet.startRow + 1, mainSheet.getLastColumn()).getValues();
+  let syncCount = 0;
+
+  // 各行をループして完了日が入力済みの案件を同期
+  mainData.forEach((row, index) => {
+    try {
+      const completeDate = row[mainIndices.COMPLETE_DATE - 1];
+
+      // 完了日が入力されている場合のみ同期
+      if (completeDate && isValidDate(completeDate)) {
+        const mgmtNo = row[mainIndices.MGMT_NO - 1];
+        const sagyouKubun = row[mainIndices.SAGYOU_KUBUN - 1];
+        const kiban = row[mainIndices.KIBAN - 1];
+        const plannedHours = row[mainIndices.PLANNED_HOURS - 1];
+        const actualHours = row[mainIndices.ACTUAL_HOURS - 1];
+
+        syncCompletedToBillingSheet(mgmtNo, sagyouKubun, kiban, plannedHours, actualHours, new Date(completeDate));
+        syncCount++;
+      }
+    } catch (e) {
+      Logger.log(`行${mainSheet.startRow + index}の請求シート同期中にエラー: ${e.message}`);
+    }
+  });
+
+  // 同期後に見た目を整える
+  if (syncCount > 0) {
+    formatBillingSheet();
+  }
+
+  // 完了通知
+  ss.toast(`${syncCount}件の完了案件を請求シートに同期しました。`, '同期完了', 5);
+  Logger.log(`完了案件一括同期完了: ${syncCount}件を処理しました`);
+}
+
+// =================================================================================
+// === 請求シートの見た目整形処理 ===
+// =================================================================================
+/**
+ * 請求シートの見た目を整える（カスタムメニューから実行）
+ */
+function formatBillingSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const billingSheet = ss.getSheetByName(CONFIG.SHEETS.BILLING);
+
+  if (!billingSheet) {
+    ss.toast('請求シートが存在しません。', 'エラー', 3);
+    return;
+  }
+
+  const lastRow = billingSheet.getLastRow();
+  if (lastRow < 1) return;
+
+  // 1. ヘッダー行のスタイル設定
+  const headerRange = billingSheet.getRange(1, 1, 1, 6);
+  headerRange
+    .setBackground('#1f4788')
+    .setFontColor('#ffffff')
+    .setFontWeight('bold')
+    .setHorizontalAlignment('center')
+    .setVerticalAlignment('middle');
+
+  // 2. ヘッダー行を固定
+  billingSheet.setFrozenRows(1);
+
+  // 3. データ行が存在する場合の書式設定
+  if (lastRow >= 2) {
+    const dataRange = billingSheet.getRange(2, 1, lastRow - 1, 6);
+
+    // 全体にフォントとサイズを設定
+    dataRange.setFontFamily('Arial').setFontSize(11);
+
+    // 罫線を設定
+    dataRange.setBorder(true, true, true, true, true, true, '#cccccc', SpreadsheetApp.BorderStyle.SOLID);
+
+    // 数値列（予定工数・実工数）を右揃え
+    billingSheet.getRange(2, 4, lastRow - 1, 2).setHorizontalAlignment('right');
+
+    // 偶数行に薄い背景色を設定
+    for (let i = 2; i <= lastRow; i++) {
+      if ((i - 2) % 2 === 1) {  // 偶数行（データ行基準）
+        billingSheet.getRange(i, 1, 1, 6).setBackground('#f3f3f3');
+      }
+    }
+  }
+
+  // 4. 列幅を調整
+  billingSheet.setColumnWidth(1, 100);  // 管理No
+  billingSheet.setColumnWidth(2, 150);  // 委託業務内容
+  billingSheet.setColumnWidth(3, 120);  // 作業区分
+  billingSheet.setColumnWidth(4, 80);   // 予定工数
+  billingSheet.setColumnWidth(5, 80);   // 実工数
+  billingSheet.setColumnWidth(6, 100);  // 完了月
+
+  Logger.log('請求シートの見た目を整えました');
+  ss.toast('請求シートの見た目を整えました。', '完了', 3);
+}
+
+// =================================================================================
 // === 完了案件の請求シート同期処理 ===
 // =================================================================================
 /**

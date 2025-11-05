@@ -18,6 +18,8 @@ function onOpen(e) {
     .addItem('請求シートを更新', 'showBillingSidebar')
     .addSeparator()
     .addItem('予定工数を一括同期', 'syncAllPlannedHoursToInputSheets')
+    .addItem('完了案件を請求シートに一括同期', 'syncAllCompletedToBillingSheet')
+    .addItem('請求シートの見た目を整える', 'formatBillingSheet')
     .addSeparator()
     .addItem('全資料フォルダ作成', 'bulkCreateMaterialFolders')
     .addItem('週次バックアップを作成', 'createWeeklyBackup')

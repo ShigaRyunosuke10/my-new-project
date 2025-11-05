@@ -22,7 +22,9 @@ function onOpen(e) {
     .addSubMenu(ui.createMenu('工数シート表示設定')
       .addItem('フィルタを有効化', 'enableFiltersOnAllInputSheets')
       .addItem('先月・今月・来月のみ表示', 'showRecentThreeMonths')
-      .addItem('全ての月を表示', 'showAllMonths'))
+      .addItem('全ての月を表示', 'showAllMonths')
+      .addSeparator()
+      .addItem('翌月カレンダーを追加', 'addNextMonthColumnsToAllInputSheets'))
     .addSeparator()
     .addSubMenu(ui.createMenu('同期失敗対策')
       .addItem('失敗した同期を再実行', 'retryAllFailedSyncs')
@@ -369,7 +371,10 @@ function runAllManualMaintenance() {
   colorizeAllSheets();
   setupAllDataValidations();
 
-  SpreadsheetApp.getActiveSpreadsheet().toast('適用が完了しました。', '完了', 3);
+  // 翌月カレンダーを追加（未作成の場合のみ）
+  addNextMonthColumnsToAllInputSheets();
+
+  SpreadsheetApp.getActiveSpreadsheet().toast('適用が完了しました（カレンダーも更新済み）。', '完了', 3);
 }
 
 /**

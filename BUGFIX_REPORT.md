@@ -14,7 +14,69 @@
 **追加内容**: メインシートで予定工数を変更したときに、全工数シートの該当行を自動更新
 **影響**: データの一貫性が向上、手動更新の手間を削減
 
+---
+
+### ✨ 完了日入力時の請求シート自動同期機能
+
+**ファイル**: `DataSync.js`, `Code.js`
+**追加内容**: メインシートで完了日を入力したときに、請求シートに案件を自動追加/更新
+**影響**: 請求処理の自動化、月別フィルタリングによる集計が可能
+
 #### 実装詳細
+
+**1. DataSync.js - 新関数追加 (286-361行目)**
+```javascript
+/**
+ * メインシートで完了日が入力されたときに、請求シートに案件を追加/更新します。
+ * @param {string} mgmtNo - 管理No
+ * @param {string} sagyouKubun - 作業区分
+ * @param {string} kiban - 機番（委託業務内容）
+ * @param {number} plannedHours - 予定工数
+ * @param {number} actualHours - 実工数
+ * @param {Date} completeDate - 完了日
+ */
+function syncCompletedToBillingSheet(mgmtNo, sagyouKubun, kiban, plannedHours, actualHours, completeDate) {
+  // 請求シートが存在しない場合は自動作成
+  // 管理No + 作業区分で該当行を検索
+  // 見つかった場合は実工数と完了月を更新
+  // 見つからない場合は新規行として追加
+  // フィルタを自動設定
+}
+```
+
+**2. Code.js - 完了日トリガーに同期処理を追加 (97-102行目)**
+```javascript
+// 請求シートへの同期
+const mgmtNo = editedRowValues[mainSheet.indices.MGMT_NO - 1];
+const sagyouKubun = editedRowValues[mainSheet.indices.SAGYOU_KUBUN - 1];
+const plannedHours = editedRowValues[mainSheet.indices.PLANNED_HOURS - 1];
+const actualHours = editedRowValues[mainSheet.indices.ACTUAL_HOURS - 1];
+syncCompletedToBillingSheet(mgmtNo, sagyouKubun, kiban, plannedHours, actualHours, new Date(completionDate));
+```
+
+#### 請求シートの構造
+
+- **列構成**: `管理No | 委託業務内容 | 作業区分 | 予定工数 | 実工数 | 完了月`
+- **完了月形式**: YYYY-MM（例: 2025-11）
+- **フィルタ機能**: 自動的にフィルタボタンが追加され、月別絞り込みが可能
+- **検索キー**: 管理No + 作業区分
+
+#### 動作仕様
+
+- **同期タイミング**: メインシートで完了日を入力したとき
+- **自動作成**: 請求シートが存在しない場合は自動作成
+- **更新ロジック**: 既存案件の場合は実工数と完了月を更新、新規案件は追加
+- **エラーハンドリング**: 管理Noまたは作業区分が空の場合はスキップ
+
+#### テスト項目
+
+1. メインシートで完了日を入力 → 請求シートに案件が追加されることを確認
+2. 既存案件の完了日を変更 → 請求シートの実工数と完了月が更新されることを確認
+3. フィルタボタンで完了月を選択 → 該当月のみが表示されることを確認
+
+---
+
+#### 予定工数の自動同期機能（詳細）
 
 **1. DataSync.js - 新関数追加 (214-284行目)**
 ```javascript

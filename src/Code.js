@@ -91,8 +91,15 @@ function onEdit(e) {
       else if (editedCol === mainSheet.indices.COMPLETE_DATE && editedRow >= mainSheet.startRow) {
         const completionDate = e.value;
         if (kiban && completionDate) {
-          ss.toast('完了日を顧客用管理表に同期します...', '同期中', 3);
+          ss.toast('完了日を顧客用管理表と請求シートに同期します...', '同期中', 3);
           updateManagementSheet({ kiban: kiban, completionDate: new Date(completionDate) });
+
+          // 請求シートへの同期
+          const mgmtNo = editedRowValues[mainSheet.indices.MGMT_NO - 1];
+          const sagyouKubun = editedRowValues[mainSheet.indices.SAGYOU_KUBUN - 1];
+          const plannedHours = editedRowValues[mainSheet.indices.PLANNED_HOURS - 1];
+          const actualHours = editedRowValues[mainSheet.indices.ACTUAL_HOURS - 1];
+          syncCompletedToBillingSheet(mgmtNo, sagyouKubun, kiban, plannedHours, actualHours, new Date(completionDate));
         }
         colorizeAllSheets();
       } else {

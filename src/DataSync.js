@@ -282,3 +282,80 @@ function syncPlannedHoursToInputSheets(editedRow) {
     ss.toast('該当する工数シートが見つかりませんでした。', '同期結果', 3);
   }
 }
+
+// =================================================================================
+// === 完了案件の請求シート同期処理 ===
+// =================================================================================
+/**
+ * メインシートで完了日が入力されたときに、請求シートに案件を追加/更新します。
+ * @param {string} mgmtNo - 管理No
+ * @param {string} sagyouKubun - 作業区分
+ * @param {string} kiban - 機番（委託業務内容）
+ * @param {number} plannedHours - 予定工数
+ * @param {number} actualHours - 実工数
+ * @param {Date} completeDate - 完了日
+ */
+function syncCompletedToBillingSheet(mgmtNo, sagyouKubun, kiban, plannedHours, actualHours, completeDate) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let billingSheet = ss.getSheetByName(CONFIG.SHEETS.BILLING);
+
+  // 請求シートが存在しない場合は作成
+  if (!billingSheet) {
+    billingSheet = ss.insertSheet(CONFIG.SHEETS.BILLING);
+    const headers = ["管理No", "委託業務内容", "作業区分", "予定工数", "実工数", "完了月"];
+    billingSheet.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight("bold");
+    Logger.log('請求シートを新規作成しました');
+  }
+
+  // 管理Noまたは作業区分が空の場合はスキップ
+  if (!mgmtNo || !sagyouKubun) {
+    Logger.log('管理Noまたは作業区分が空のため、請求シートへの同期をスキップしました');
+    return;
+  }
+
+  // 完了日から完了月を生成（YYYY-MM形式）
+  const completeMonth = completeDate ? Utilities.formatDate(new Date(completeDate), Session.getScriptTimeZone(), 'yyyy-MM') : '';
+
+  // 請求シートで該当行を検索（管理No + 作業区分がキー）
+  const lastRow = billingSheet.getLastRow();
+  let targetRow = null;
+
+  if (lastRow >= 2) {
+    const billingData = billingSheet.getRange(2, 1, lastRow - 1, 3).getValues();
+    for (let i = 0; i < billingData.length; i++) {
+      if (billingData[i][0] === mgmtNo && billingData[i][2] === sagyouKubun) {
+        targetRow = i + 2;
+        break;
+      }
+    }
+  }
+
+  // 行データを準備
+  const rowData = [
+    mgmtNo,
+    kiban || '',
+    sagyouKubun,
+    plannedHours || '',
+    actualHours || '',
+    completeMonth
+  ];
+
+  if (targetRow) {
+    // 既存行を更新
+    billingSheet.getRange(targetRow, 1, 1, rowData.length).setValues([rowData]);
+    Logger.log(`請求シート: 行${targetRow} を更新しました（管理No: ${mgmtNo}, 作業区分: ${sagyouKubun}）`);
+  } else {
+    // 新規行を追加
+    const newRow = lastRow + 1;
+    billingSheet.getRange(newRow, 1, 1, rowData.length).setValues([rowData]);
+    Logger.log(`請求シート: 行${newRow} を追加しました（管理No: ${mgmtNo}, 作業区分: ${sagyouKubun}）`);
+  }
+
+  // フィルタがまだ設定されていない場合は追加
+  const existingFilter = billingSheet.getFilter();
+  if (!existingFilter && billingSheet.getLastRow() >= 2) {
+    const dataRange = billingSheet.getRange(1, 1, billingSheet.getLastRow(), 6);
+    dataRange.createFilter();
+    Logger.log('請求シートにフィルタを設定しました');
+  }
+}

@@ -90,6 +90,7 @@ function syncMainToAllInputSheets() {
             value[mainIndices.KIBAN_URL - 1] || "",      // 機番(リンク)
             value[mainIndices.SERIES_URL - 1] || "",     // STD資料(リンク)
             "",  // 備考列（初期値は空）
+            value[mainIndices.DRAWING_DEADLINE - 1] || "",  // 作図期限
             value[mainIndices.PLANNED_HOURS - 1],
           ]);
         }
@@ -310,7 +311,7 @@ function syncAllPlannedHoursToInputSheets() {
   const mainSheet = new MainSheet();
   const mainIndices = mainSheet.indices;
 
-  ss.toast('予定工数の一括同期を開始します...', '処理中', 3);
+  ss.toast('予定工数と作図期限の一括同期を開始します...', '処理中', 3);
 
   // 1. メインシートの全データを一度に取得
   const lastRow = mainSheet.getLastRow();
@@ -322,12 +323,13 @@ function syncAllPlannedHoursToInputSheets() {
   const mainData = mainSheet.sheet.getRange(mainSheet.startRow, 1, lastRow - mainSheet.startRow + 1, mainSheet.getLastColumn()).getValues();
 
   // 2. 有効な行のみを抽出（管理No + 作業区分が両方とも存在）
-  const validRows = new Map();  // key: 担当者名, value: [{mgmtNo, sagyouKubun, plannedHours}, ...]
+  const validRows = new Map();  // key: 担当者名, value: Map{ key: {plannedHours, drawingDeadline} }
 
   mainData.forEach((row, index) => {
     const mgmtNo = row[mainIndices.MGMT_NO - 1];
     const sagyouKubun = row[mainIndices.SAGYOU_KUBUN - 1];
     const plannedHours = row[mainIndices.PLANNED_HOURS - 1];
+    const drawingDeadline = row[mainIndices.DRAWING_DEADLINE - 1];
     const tantousha = row[mainIndices.TANTOUSHA - 1];
 
     // 管理No、作業区分、担当者が全て存在する行のみ処理
@@ -337,7 +339,7 @@ function syncAllPlannedHoursToInputSheets() {
       if (!validRows.has(tantousha)) {
         validRows.set(tantousha, new Map());
       }
-      validRows.get(tantousha).set(key, plannedHours);
+      validRows.get(tantousha).set(key, { plannedHours, drawingDeadline });
     }
   });
 
@@ -345,7 +347,7 @@ function syncAllPlannedHoursToInputSheets() {
   const failedSheets = [];
 
   // 3. 担当者ごとに工数シートを処理（リトライ機構付き）
-  for (const [tantoushaName, plannedHoursMap] of validRows.entries()) {
+  for (const [tantoushaName, syncDataMap] of validRows.entries()) {
     const result = retrySync(() => {
       const inputSheet = new InputSheet(tantoushaName);
 
@@ -360,36 +362,49 @@ function syncAllPlannedHoursToInputSheets() {
       const inputFormulas = inputRange.getFormulas();
 
       // 更新対象の行を特定
-      const updates = [];  // [{row: rowNum, value: plannedHours}, ...]
+      const updates = [];  // [{row: rowNum, plannedHours: value, drawingDeadline: value}, ...]
 
       inputValues.forEach((row, i) => {
         const rowMgmtNo = row[inputSheet.indices.MGMT_NO - 1];
         const rowSagyouKubun = row[inputSheet.indices.SAGYOU_KUBUN - 1];
         const rowKey = `${rowMgmtNo}_${rowSagyouKubun}`;
 
-        if (plannedHoursMap.has(rowKey)) {
+        if (syncDataMap.has(rowKey)) {
           const targetRowNum = inputSheet.startRow + i;
-          const targetCol = inputSheet.indices.PLANNED_HOURS;
+          const syncData = syncDataMap.get(rowKey);
+          const plannedHoursCol = inputSheet.indices.PLANNED_HOURS;
+          const drawingDeadlineCol = inputSheet.indices.DRAWING_DEADLINE;
 
-          // 数式がない場合のみ更新
-          if (!inputFormulas[i][targetCol - 1]) {
-            updates.push({
-              row: targetRowNum,
-              value: plannedHoursMap.get(rowKey)
-            });
+          const updateData = { row: targetRowNum };
+
+          // 予定工数：数式がない場合のみ更新
+          if (!inputFormulas[i][plannedHoursCol - 1]) {
+            updateData.plannedHours = syncData.plannedHours;
           }
+
+          // 作図期限：数式がない場合のみ更新
+          if (drawingDeadlineCol && !inputFormulas[i][drawingDeadlineCol - 1]) {
+            updateData.drawingDeadline = syncData.drawingDeadline;
+          }
+
+          updates.push(updateData);
         }
       });
 
       // まとめて更新
       updates.forEach(update => {
-        inputSheet.sheet.getRange(update.row, inputSheet.indices.PLANNED_HOURS).setValue(update.value);
+        if (update.plannedHours !== undefined) {
+          inputSheet.sheet.getRange(update.row, inputSheet.indices.PLANNED_HOURS).setValue(update.plannedHours);
+        }
+        if (update.drawingDeadline !== undefined && inputSheet.indices.DRAWING_DEADLINE) {
+          inputSheet.sheet.getRange(update.row, inputSheet.indices.DRAWING_DEADLINE).setValue(update.drawingDeadline);
+        }
       });
 
       Logger.log(`${tantoushaName} の工数シート: ${updates.length}件を更新`);
       return { skipped: false, updateCount: updates.length };
 
-    }, 3, `${tantoushaName} の工数シートへの予定工数同期`);
+    }, 3, `${tantoushaName} の工数シートへの予定工数・作図期限同期`);
 
     if (result.success && !result.result.skipped) {
       totalUpdated += result.result.updateCount;
@@ -402,14 +417,14 @@ function syncAllPlannedHoursToInputSheets() {
   if (failedSheets.length > 0) {
     const failedList = failedSheets.join(', ');
     ss.toast(
-      `予定工数同期: ${totalUpdated}件を更新、${failedSheets.length}件の工数シートで失敗\n失敗: ${failedList}`,
+      `予定工数・作図期限同期: ${totalUpdated}件を更新、${failedSheets.length}件の工数シートで失敗\n失敗: ${failedList}`,
       '同期完了（一部失敗）',
       10
     );
-    Logger.log(`予定工数一括同期完了: ${totalUpdated}件を更新、失敗: ${failedList}`);
+    Logger.log(`予定工数・作図期限一括同期完了: ${totalUpdated}件を更新、失敗: ${failedList}`);
   } else {
-    ss.toast(`${totalUpdated}件の予定工数を工数シートに同期しました。`, '同期完了', 5);
-    Logger.log(`予定工数一括同期完了: ${totalUpdated}件を更新しました`);
+    ss.toast(`${totalUpdated}件の予定工数・作図期限を工数シートに同期しました。`, '同期完了', 5);
+    Logger.log(`予定工数・作図期限一括同期完了: ${totalUpdated}件を更新しました`);
   }
 }
 

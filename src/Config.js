@@ -53,7 +53,7 @@ const MAIN_SHEET_HEADERS = {
 const INPUT_SHEET_HEADERS = {
   MGMT_NO: "管理No", SAGYOU_KUBUN: "作業区分", KIBAN: "機番", PROGRESS: "進捗",
   KIBAN_URL: "機番(リンク)", SERIES_URL: "STD資料(リンク)", REMARKS: "備考",
-  PLANNED_HOURS:"予定工数", ACTUAL_HOURS_SUM: "実績工数合計", SEPARATOR: "",
+  DRAWING_DEADLINE: "作図期限", PLANNED_HOURS:"予定工数", ACTUAL_HOURS_SUM: "実績工数合計", SEPARATOR: "",
 };
 
 function getColumnIndices(sheet, headerDef) {

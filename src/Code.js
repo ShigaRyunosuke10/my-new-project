@@ -391,9 +391,7 @@ function runAllManualMaintenance() {
 function updateInputSheetHeaders() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const allSheets = ss.getSheets();
-  const headerValues = Object.values(INPUT_SHEET_HEADERS);
-
-  // キャッシュをクリアして最新のヘッダー構造を反映させる
+  const newHeaders = Object.values(INPUT_SHEET_HEADERS);
   const cache = CacheService.getScriptCache();
 
   allSheets.forEach(sheet => {
@@ -401,15 +399,51 @@ function updateInputSheetHeaders() {
     if (sheetName.startsWith(CONFIG.SHEETS.INPUT_PREFIX)) {
       try {
         const currentLastCol = sheet.getLastColumn();
-        const requiredCols = headerValues.length;
 
-        // 必要に応じて列を追加
-        if (currentLastCol < requiredCols) {
-          sheet.insertColumnsAfter(currentLastCol, requiredCols - currentLastCol);
+        // 現在のヘッダー行を取得（日付列を含む全列）
+        const currentHeaders = sheet.getRange(1, 1, 1, currentLastCol).getValues()[0];
+
+        // SEPARATOR列のインデックスを探す（日付列との境界）
+        const separatorIndex = newHeaders.indexOf("");
+
+        // 既存のヘッダーとの差分を検出
+        const existingBaseHeaders = currentHeaders.slice(0, separatorIndex + 1);
+        const dateHeaders = currentHeaders.slice(separatorIndex + 1); // 日付列（保護する）
+
+        // 新しい列を検出して挿入
+        for (let i = 0; i < newHeaders.length; i++) {
+          const newHeader = newHeaders[i];
+
+          // 空文字（SEPARATOR）以降は日付列なのでスキップ
+          if (i >= separatorIndex) {
+            break;
+          }
+
+          // この位置に既に正しいヘッダーがあればスキップ
+          if (existingBaseHeaders[i] === newHeader) {
+            continue;
+          }
+
+          // 新しいヘッダーが既存のどこかに存在するか確認
+          const existingIndex = existingBaseHeaders.indexOf(newHeader);
+
+          if (existingIndex === -1) {
+            // 新規列：この位置に挿入
+            Logger.log(`工数シート「${sheetName}」: ${i + 1}列目に「${newHeader}」を挿入します。`);
+            sheet.insertColumnBefore(i + 1);
+            sheet.getRange(1, i + 1).setValue(newHeader);
+
+            // existingBaseHeaders配列も更新（次のループで正しく比較できるように）
+            existingBaseHeaders.splice(i, 0, newHeader);
+          } else if (existingIndex !== i) {
+            // 既存列が違う位置にある：移動が必要（今回は未実装、警告のみ）
+            Logger.log(`警告: 工数シート「${sheetName}」の「${newHeader}」列が${existingIndex + 1}列目にありますが、${i + 1}列目に必要です。`);
+          }
         }
 
-        // ヘッダー行を更新
-        sheet.getRange(1, 1, 1, requiredCols).setValues([headerValues]);
+        // 最終的なヘッダー行を構築（ベースヘッダー + 日付列）
+        const finalHeaders = [...newHeaders, ...dateHeaders];
+        sheet.getRange(1, 1, 1, finalHeaders.length).setValues([finalHeaders]);
 
         // このシートのキャッシュをクリア
         const cacheKey = `col_indices_${sheet.getSheetId()}`;
@@ -418,6 +452,7 @@ function updateInputSheetHeaders() {
         Logger.log(`工数シート「${sheetName}」のヘッダーを更新しました。`);
       } catch (e) {
         Logger.log(`工数シート「${sheetName}」のヘッダー更新中にエラー: ${e.message}`);
+        Logger.log(`スタックトレース: ${e.stack}`);
       }
     }
   });

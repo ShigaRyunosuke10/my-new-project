@@ -70,8 +70,15 @@ function onEdit(e) {
       const model = editedRowValues[mainSheet.indices.MODEL - 1];
 
       if (editedCol === mainSheet.indices.TANTOUSHA) {
-        ss.toast('担当者の変更を検出しました。関連シートを同期します...', '同期中', 5);
+        ss.toast('担当者の変更を検出しました。データとリンクを同期します...', '同期中', 8);
+
+        // データ同期
         syncMainToAllInputSheets();
+
+        // リンク同期を追加
+        const mainSheet = new MainSheet();
+        syncLinksToInputSheets_(mainSheet);
+
         colorizeAllSheets();
       }
       // 「予定工数」が編集された時の処理
